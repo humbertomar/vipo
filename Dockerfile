@@ -21,8 +21,9 @@ RUN npx prisma generate
 COPY . .
 
 # Build frontend + backend
-# (chama "vite build" e depois "cd server && tsc")
 RUN pnpm run build
+# - vite build       -> dist/public
+# - cd server && tsc -> dist/server (pelo tsconfig do Nest)
 
 
 # ===========================
@@ -42,12 +43,11 @@ COPY prisma ./prisma
 RUN npm install -g pnpm && \
     pnpm install --prod --no-frozen-lockfile
 
-# Frontend buildado (Vite) → dist/public
-COPY --from=builder /app/dist ./dist
+# Gera Prisma Client também na imagem final
+RUN npx prisma generate
 
-# Backend buildado (Nest) → server/dist
-# (pasta gerada pelo "cd server && tsc")
-COPY --from=builder /app/server/dist ./server/dist
+# Copia TUDO que foi buildado (front + back)
+COPY --from=builder /app/dist ./dist
 
 # Se precisar de diretório de uploads
 RUN mkdir -p /app/uploads
@@ -57,5 +57,5 @@ ENV NODE_ENV=production \
 
 EXPOSE 3001
 
-# 👉 Entry point do Nest: server/dist/main.js
-CMD ["dumb-init", "node", "server/dist/main.js"]
+# 👉 Entry point do Nest: dist/server/main.js
+CMD ["dumb-init", "node", "dist/server/main.js"]
