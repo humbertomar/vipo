@@ -259,54 +259,31 @@ class SDKServer {
   }
 
   async authenticateRequest(req: Request): Promise<User> {
-    // Regular authentication flow
+    // Lê os cookies da requisição
     const cookies = this.parseCookies(req.headers.cookie);
     const sessionCookie = cookies.get(COOKIE_NAME);
+
+    // Valida a sessão (JWT armazenado no cookie)
     const session = await this.verifySession(sessionCookie);
 
     if (!session) {
       throw ForbiddenError("Invalid session cookie");
     }
 
-    const sessionUserId = session.openId;
     const signedInAt = new Date();
+
+    // Tenta achar o usuário pelo openId vindo da sessão
     let user = await this.prisma.user.findUnique({
-      where: { openId: sessionUserId },
+      where: { openId: session.openId },
     });
 
-    // If user not in DB, sync from OAuth server automatically
-    if (!user) {
-      try {
-        const userInfo = await this.getUserInfoWithJwt(sessionCookie ?? "");
-        await this.prisma.user.upsert({
-          where: { openId: userInfo.openId },
-          update: {
-            name: userInfo.name || null,
-            email: userInfo.email ?? null,
-            loginMethod: userInfo.loginMethod ?? userInfo.platform ?? null,
-            lastSignedIn: signedInAt,
-          },
-          create: {
-            openId: userInfo.openId,
-            name: userInfo.name || null,
-            email: userInfo.email ?? null,
-            loginMethod: userInfo.loginMethod ?? userInfo.platform ?? null,
-            lastSignedIn: signedInAt,
-          },
-        });
-        user = await this.prisma.user.findUnique({
-          where: { openId: userInfo.openId },
-        });
-      } catch (error) {
-        console.error("[Auth] Failed to sync user from OAuth:", error);
-        throw ForbiddenError("Failed to sync user info");
-      }
-    }
-
+    // Por enquanto, se não existir no banco, a gente bloqueia.
+    // (Em vez de tentar criar automaticamente usando algum userInfo externo)
     if (!user) {
       throw ForbiddenError("User not found");
     }
 
+    // Atualiza lastSignedIn
     await this.prisma.user.update({
       where: { openId: user.openId },
       data: { lastSignedIn: signedInAt },
@@ -314,6 +291,7 @@ class SDKServer {
 
     return user;
   }
+
 }
 
 export const sdk = new SDKServer();

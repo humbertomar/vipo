@@ -1,22 +1,26 @@
 {
     "extends": "../tsconfig.json",
     "compilerOptions": {
-        "moduleResolution": "node",
-        "baseUrl": ".",
-        "paths": {
-            "@/*": [
-                "../client/src/*"
-            ],
-            "@shared/*": [
-                "../shared/*"
-            ],
-            "@server/*": [
-                "./src/*"
-            ]
-        }
+      "module": "CommonJS",
+      "moduleResolution": "Node",
+      "target": "ES2020",
+      "lib": ["ES2020"],
+      "rootDir": "./src",
+      "outDir": "./dist",
+      "strict": true,
+      "esModuleInterop": true,
+      "skipLibCheck": true,
+      "resolveJsonModule": true,
+      "experimentalDecorators": true,
+      "emitDecoratorMetadata": true
     },
     "include": [
-        "**/*",
-        "../shared/**/*"
+      "src/**/*.ts"
+    ],
+    "exclude": [
+      "dist",
+      "node_modules",
+      "_core"
     ]
-}
+  }
+  

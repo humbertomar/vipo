@@ -15,6 +15,7 @@
  *     }]
  *   });
  */
+
 // import { storagePut } from "server/storage"; // TODO: Recreate storage module after reorganization
 import { ENV } from "./env";
 
@@ -30,6 +31,22 @@ export type GenerateImageOptions = {
 export type GenerateImageResponse = {
   url?: string;
 };
+
+/**
+ * Stub de storagePut temporário.
+ * TODO: substituir por implementação real (S3, R2, etc).
+ */
+async function storagePut(
+  path: string,
+  data: Buffer,
+  mimeType?: string
+): Promise<{ url: string }> {
+  // Aqui você pode implementar integração real com S3 depois.
+  // Por enquanto, deixamos explícito que não está configurado.
+  throw new Error(
+    `storagePut não está implementado. Tentativa de salvar "${path}" (mimeType: ${mimeType ?? "desconhecido"}).`
+  );
+}
 
 export async function generateImage(
   options: GenerateImageOptions
@@ -67,7 +84,9 @@ export async function generateImage(
   if (!response.ok) {
     const detail = await response.text().catch(() => "");
     throw new Error(
-      `Image generation request failed (${response.status} ${response.statusText})${detail ? `: ${detail}` : ""}`
+      `Image generation request failed (${response.status} ${response.statusText})${
+        detail ? `: ${detail}` : ""
+      }`
     );
   }
 
@@ -77,15 +96,17 @@ export async function generateImage(
       mimeType: string;
     };
   };
+
   const base64Data = result.image.b64Json;
   const buffer = Buffer.from(base64Data, "base64");
 
-  // Save to S3
+  // Save to storage (stub por enquanto)
   const { url } = await storagePut(
     `generated/${Date.now()}.png`,
     buffer,
     result.image.mimeType
   );
+
   return {
     url,
   };
