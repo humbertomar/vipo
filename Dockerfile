@@ -52,7 +52,8 @@ RUN npm install -g pnpm && \
     pnpm install --prod --no-frozen-lockfile
 
 # Gera Prisma Client na imagem final também
-RUN npx prisma generate
+# (fixando a versão 6.19.1 pra bater com o schema e com @prisma/client)
+RUN npx prisma@6.19.1 generate
 
 # Copia artefatos buildados do builder:
 # - dist/public  (frontend)
