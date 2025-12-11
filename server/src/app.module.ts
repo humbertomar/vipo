@@ -45,10 +45,24 @@ import { join } from 'path';
     // CouponsModule,
     HealthModule,
     UploadModule,
+    // Servir arquivos de upload
     ServeStaticModule.forRoot({
       rootPath: join(process.cwd(), 'uploads'),
       serveRoot: '/uploads',
     }),
+    // Servir frontend buildado (apenas em produção)
+    ...(process.env.NODE_ENV === 'production' 
+      ? [
+          ServeStaticModule.forRoot({
+            rootPath: join(process.cwd(), 'dist', 'public'),
+            exclude: ['/api*', '/uploads*'],
+            serveStaticOptions: {
+              index: false,
+            },
+          }),
+        ]
+      : []
+    ),
   ],
 })
 export class AppModule { }

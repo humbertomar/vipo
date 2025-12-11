@@ -7,15 +7,20 @@
     "dev": "dotenv -e .env.local -- concurrently \"npm:dev:server\" \"npm:dev:frontend\"",
     "dev:server": "cd server && cross-env NODE_ENV=development tsx src/main.ts",
     "dev:frontend": "vite",
-    "build": "vite build",
-    "start": "cross-env NODE_ENV=production node dist/main.js",
+    "build": "npm run build:client && npm run build:server",
+    "build:client": "vite build",
+    "build:server": "cd server && tsc",
+    "start": "cross-env NODE_ENV=production node server/dist/main.js",
+    "start:prod": "cross-env NODE_ENV=production node server/dist/main.js",
     "check": "tsc --noEmit",
     "format": "prettier --write .",
     "test": "vitest run",
     "db:push": "prisma migrate dev",
     "db:migrate": "prisma migrate dev --name init",
+    "db:migrate:deploy": "prisma migrate deploy",
     "db:seed": "dotenv -e .env.local -- tsx prisma/seed.ts",
-    "db:reset": "prisma migrate reset --force"
+    "db:reset": "prisma migrate reset --force",
+    "db:generate": "prisma generate"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.693.0",
