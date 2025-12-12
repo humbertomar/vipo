@@ -13,10 +13,8 @@ COPY prisma ./prisma
 COPY patches ./patches
 
 # Instala pnpm e TODAS as dependências (dev + prod) para conseguir buildar
-# tsx precisa estar instalado para rodar o backend em produção
 RUN npm install -g pnpm \
-  && pnpm install --no-frozen-lockfile \
-  && pnpm add -g tsx || npm install -g tsx
+  && pnpm install --no-frozen-lockfile
 
 # Gera Prisma Client
 RUN npx prisma generate
