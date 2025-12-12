@@ -11,6 +11,7 @@ RUN apk add --no-cache dumb-init openssl
 COPY package.json pnpm-lock.yaml* ./
 COPY prisma ./prisma
 COPY patches ./patches
+COPY scripts ./scripts
 
 # Instala pnpm e TODAS as dependências (dev + prod) para conseguir buildar
 RUN npm install -g pnpm \
@@ -28,6 +29,9 @@ RUN npm install -g tsx
 # Builda apenas o frontend (backend roda com tsx diretamente do TypeScript)
 RUN pnpm run build:client
 
+# Torna executável o script de start
+RUN chmod +x /app/scripts/start.sh
+
 # Variáveis padrão
 ENV NODE_ENV=production
 ENV PORT=3001
@@ -35,5 +39,5 @@ ENV PORT=3001
 # Expõe a porta do backend
 EXPOSE 3001
 
-# Sobe o Nest usando tsx (evita problemas com ESM e extensões)
-CMD ["dumb-init", "tsx", "server/src/main.ts"]
+# Usa o script de start que executa migrações antes de iniciar
+CMD ["/app/scripts/start.sh"]
