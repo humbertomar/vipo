@@ -9,12 +9,37 @@ async function bootstrap() {
   try {
     const app = await NestFactory.create<NestExpressApplication>(AppModule);
 
-    // Middleware de segurança
-    app.use(helmet({
-      contentSecurityPolicy: process.env.NODE_ENV === 'production' ? undefined : false,
-    }));
+    const isProd = process.env.NODE_ENV === 'production';
 
-    // Validação global
+    app.use(
+      helmet({
+        contentSecurityPolicy: isProd
+          ? {
+              useDefaults: true,
+              directives: {
+                ...helmet.contentSecurityPolicy.getDefaultDirectives(),
+
+                // scripts do próprio site + Cloudflare Insights (se usar)
+                "script-src": ["'self'", "https://static.cloudflareinsights.com"],
+
+                // se você carregar CSS externo (Google Fonts etc), libera aqui
+                // "style-src": ["'self'", "https://fonts.googleapis.com"],
+                // "font-src": ["'self'", "https://fonts.gstatic.com"],
+
+                // imagens do próprio site + data: (base64) se precisar
+                "img-src": ["'self'", "data:", "https:"],
+
+                // XHR/fetch/websocket (API no mesmo domínio)
+                "connect-src": ["'self'", "https://static.cloudflareinsights.com"],
+
+                // se você usa iframes (pagamento, etc), ajusta aqui
+                // "frame-src": ["'self'"],
+              },
+            }
+          : false,
+      }),
+    );
+
     app.useGlobalPipes(
       new ValidationPipe({
         whitelist: true,
@@ -23,20 +48,13 @@ async function bootstrap() {
       }),
     );
 
-    // CORS - Configuração baseada no ambiente
-    if (process.env.NODE_ENV === 'production') {
-      // Em produção monolito (tudo no mesmo servidor), CORS pode ser mais permissivo
-      // ou restrito ao próprio domínio
-      const allowedOrigins = process.env.FRONTEND_URL 
-        ? [process.env.FRONTEND_URL]
-        : true; // Se não especificado, permite qualquer origem (ajuste conforme necessário)
-      
+    if (isProd) {
+      const allowedOrigins = process.env.FRONTEND_URL ? [process.env.FRONTEND_URL] : true;
       app.enableCors({
         origin: allowedOrigins,
         credentials: true,
       });
     } else {
-      // Em desenvolvimento, permite frontend local
       app.enableCors({
         origin: process.env.FRONTEND_URL || 'http://localhost:5173',
         credentials: true,
@@ -45,14 +63,8 @@ async function bootstrap() {
 
     const port = process.env.PORT || 3000;
     await app.listen(port);
-    
-    if (process.env.NODE_ENV === 'production') {
-      console.log(`🚀 Aplicação rodando em http://localhost:${port}`);
-      console.log(`📦 Frontend servido em: http://localhost:${port}`);
-      console.log(`🔌 API disponível em: http://localhost:${port}/api`);
-    } else {
-      console.log(`🚀 API rodando em http://localhost:${port}`);
-    }
+
+    console.log(`🚀 Rodando na porta ${port}`);
   } catch (err) {
     console.error('Error during bootstrap:', err);
     process.exit(1);
