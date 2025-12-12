@@ -122,12 +122,11 @@ function DashboardLayoutContent({
 }: DashboardLayoutContentProps) {
   const { user, logout } = useAuth();
   const [location, setLocation] = useLocation();
-  const { state, toggleSidebar } = useSidebar();
+  const { state, toggleSidebar, setOpenMobile, isMobile } = useSidebar();
   const isCollapsed = state === "collapsed";
   const [isResizing, setIsResizing] = useState(false);
   const sidebarRef = useRef<HTMLDivElement>(null);
   const activeMenuItem = menuItems.find(item => item.path === location);
-  const isMobile = useIsMobile();
 
   useEffect(() => {
     if (isCollapsed) {
@@ -212,6 +211,7 @@ function DashboardLayoutContent({
             </div>
           </SidebarHeader>
 
+
           <SidebarContent className="gap-0">
             <SidebarMenu className="px-2 py-1">
               {menuItems.map(item => {
@@ -223,6 +223,11 @@ function DashboardLayoutContent({
                     <SidebarMenuButton
                       isActive={isActive}
                       onClick={() => {
+                        // Fecha o menu mobile antes de navegar
+                        if (isMobile) {
+                          setOpenMobile(false);
+                        }
+
                         if (isExternalLink) {
                           window.open(item.path, '_blank', 'noopener,noreferrer');
                         } else {

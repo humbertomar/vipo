@@ -195,6 +195,23 @@ function Sidebar({
             } as React.CSSProperties
           }
           side={side}
+          onClick={(e) => {
+            // Fecha o sheet ao clicar em qualquer item de menu
+            const target = e.target as HTMLElement;
+
+            let element: HTMLElement | null = target;
+            while (element && element !== e.currentTarget) {
+              if (
+                element.getAttribute('data-sidebar') === 'menu-button' ||
+                element.tagName === 'A' ||
+                element.getAttribute('role') === 'button'
+              ) {
+                setTimeout(() => setOpenMobile(false), 50);
+                break;
+              }
+              element = element.parentElement;
+            }
+          }}
         >
           <SheetHeader className="sr-only">
             <SheetTitle>Sidebar</SheetTitle>
@@ -576,7 +593,7 @@ function SidebarMenuAction({
         "peer-data-[size=lg]/menu-button:top-2.5",
         "group-data-[collapsible=icon]:hidden",
         showOnHover &&
-          "peer-data-[active=true]/menu-button:text-sidebar-accent-foreground group-focus-within/menu-item:opacity-100 group-hover/menu-item:opacity-100 data-[state=open]:opacity-100 md:opacity-0",
+        "peer-data-[active=true]/menu-button:text-sidebar-accent-foreground group-focus-within/menu-item:opacity-100 group-hover/menu-item:opacity-100 data-[state=open]:opacity-100 md:opacity-0",
         className
       )}
       {...props}

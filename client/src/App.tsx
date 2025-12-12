@@ -146,13 +146,12 @@ function Footer() {
             <h4 className="font-semibold mb-3 sm:mb-4">Empresa</h4>
             <ul className="space-y-2 text-sm sm:text-base text-muted-foreground">
               <li><a href="#" className="hover:text-primary transition-colors">Sobre</a></li>
-              <li><a href="#" className="hover:text-primary transition-colors">Blog</a></li>
               <li><a href="#" className="hover:text-primary transition-colors">Política de Privacidade</a></li>
             </ul>
           </div>
         </div>
         <div className="border-t border-border pt-6 sm:pt-8 text-center text-sm sm:text-base text-muted-foreground">
-          <p>&copy; 2024 ViPO. Todos os direitos reservados.</p>
+          <p>&copy; 2025 ViPO. Todos os direitos reservados.</p>
         </div>
       </div>
     </footer>

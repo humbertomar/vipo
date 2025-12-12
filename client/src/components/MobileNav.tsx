@@ -33,7 +33,15 @@ export function MobileNav({ children, triggerClassName = '' }: MobileNavProps) {
                 </Button>
             </SheetTrigger>
             <SheetContent side="left" className="w-[280px] sm:w-[320px]">
-                <nav className="flex flex-col gap-4 mt-8">
+                <nav
+                    className="flex flex-col gap-4 mt-8"
+                    onClick={(e) => {
+                        // Fecha o menu se clicar em um link
+                        if ((e.target as HTMLElement).closest('a')) {
+                            setOpen(false);
+                        }
+                    }}
+                >
                     {children}
                 </nav>
             </SheetContent>
