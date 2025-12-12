@@ -3,7 +3,13 @@
     "compilerOptions": {
       "rootDir": "./src",
       "outDir": "./dist",
-      "noEmit": false
+      "noEmit": false,
+      "module": "ESNext",
+      "moduleResolution": "node",
+      "target": "ES2022",
+      "esModuleInterop": true,
+      "allowSyntheticDefaultImports": true,
+      "skipLibCheck": true
     },
     "include": ["src/**/*.ts"],
     "exclude": ["node_modules", "dist"]

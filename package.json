@@ -7,7 +7,7 @@
     "dev": "dotenv -e .env.local -- concurrently \"npm:dev:server\" \"npm:dev:frontend\"",
     "dev:server": "cd server && cross-env NODE_ENV=development tsx src/main.ts",
     "dev:frontend": "vite",
-    "build": "npm run build:client && npm run build:server",
+    "build": "npm run build:client",
     "build:client": "vite build",
     "build:server": "cd server && tsc",
     "start": "cross-env NODE_ENV=production node server/dist/main.js",
