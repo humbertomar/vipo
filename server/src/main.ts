@@ -4,6 +4,7 @@ import { ValidationPipe } from '@nestjs/common';
 import { AppModule } from './app.module';
 import helmet from 'helmet';
 import { NestExpressApplication } from '@nestjs/platform-express';
+import { join } from 'path';
 
 async function bootstrap() {
   try {
@@ -20,25 +21,17 @@ async function bootstrap() {
                 ...helmet.contentSecurityPolicy.getDefaultDirectives(),
 
                 // scripts do próprio site + Cloudflare Insights (se usar)
-                "script-src": [
-  "'self'",
-  "https://static.cloudflareinsights.com",
-  "'sha256-6Z59t59rp52o8zfsvvsotNda8VkKS1YOhoOYeTzwods='",
-],
+                'script-src': [
+                  "'self'",
+                  'https://static.cloudflareinsights.com',
+                  "'sha256-6Z59t59rp52o8zfsvvsotNda8VkKS1YOhoOYeTzwods='",
+                ],
 
-
-                // se você carregar CSS externo (Google Fonts etc), libera aqui
-                // "style-src": ["'self'", "https://fonts.googleapis.com"],
-                // "font-src": ["'self'", "https://fonts.gstatic.com"],
-
-                // imagens do próprio site + data: (base64) se precisar
-                "img-src": ["'self'", "data:", "https:"],
+                // imagens do próprio site + data: (base64) + https
+                'img-src': ["'self'", 'data:', 'https:'],
 
                 // XHR/fetch/websocket (API no mesmo domínio)
-                "connect-src": ["'self'", "https://static.cloudflareinsights.com"],
-
-                // se você usa iframes (pagamento, etc), ajusta aqui
-                // "frame-src": ["'self'"],
+                'connect-src': ["'self'", 'https://static.cloudflareinsights.com'],
               },
             }
           : false,
@@ -65,6 +58,18 @@ async function bootstrap() {
         credentials: true,
       });
     }
+
+    /**
+     * ✅ SPA fallback (Vite + React Router)
+     * Se for GET, não for /api e não for arquivo (tem ponto),
+     * devolve o dist/public/index.html.
+     */
+    app.use((req, res, next) => {
+      if (req.method !== 'GET') return next();
+      if (req.path.startsWith('/api')) return next();
+      if (req.path.includes('.')) return next(); // assets / arquivos
+      return res.sendFile(join(process.cwd(), 'dist', 'public', 'index.html'));
+    });
 
     const port = process.env.PORT || 3000;
     await app.listen(port);
