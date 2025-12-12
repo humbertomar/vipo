@@ -153,7 +153,7 @@ model Product {
   promotionalEndAt     DateTime? @db.Timestamptz
 
   // Inventory
-  sku                  String    @unique
+  sku                  String?   @unique
   totalStock           Int       @default(0)
   lowStockThreshold    Int       @default(5)
 

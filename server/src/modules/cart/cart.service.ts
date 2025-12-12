@@ -67,6 +67,26 @@ export class CartService {
       }
     });
 
+    // Verifica estoque da variante
+    const variant = await this.prisma.productVariant.findUnique({
+      where: { id: variantId },
+      include: { product: true }
+    });
+
+    if (!variant) {
+      throw new NotFoundException('Variante não encontrada.');
+    }
+
+    const requestedQuantity = existingItem
+      ? existingItem.quantity + quantity
+      : quantity;
+
+    if (variant.stock < requestedQuantity) {
+      throw new BadRequestException(
+        `Estoque insuficiente para o produto ${variant.product.name} (${variant.size}). Disponível: ${variant.stock}`
+      );
+    }
+
     if (existingItem) {
       // Atualiza quantidade
       await this.prisma.cartItem.update({
@@ -75,7 +95,6 @@ export class CartService {
       });
     } else {
       // Cria novo item
-      // Opcional: Verificar estoque da variante antes de adicionar
       await this.prisma.cartItem.create({
         data: {
           cartId: cart.id,
@@ -98,7 +117,8 @@ export class CartService {
     // Verificar se item pertence ao carrinho do usuário
     const cart = await this.findByUser(userId);
     const item = await this.prisma.cartItem.findFirst({
-      where: { id: itemId, cartId: cart.id }
+      where: { id: itemId, cartId: cart.id },
+      include: { variant: { include: { product: true } } }
     });
 
     if (!item) {
@@ -107,6 +127,14 @@ export class CartService {
 
     if (quantity <= 0) {
       return this.removeItem(userId, itemId);
+    }
+
+    // Verifica estoque antes de atualizar
+
+    if (item.variant.stock < quantity) {
+      throw new BadRequestException(
+        `Estoque insuficiente para o produto ${item.variant.product.name} (${item.variant.size}). Disponível: ${item.variant.stock}`
+      );
     }
 
     await this.prisma.cartItem.update({

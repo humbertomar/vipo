@@ -20,17 +20,31 @@ export class ProductsService {
   async create(data: any) {
     const { variants, images, ...productData } = data;
 
+    // Se houver variações, calcula o estoque total automaticamente
+    let totalStock: number;
+    if (variants && Array.isArray(variants) && variants.length > 0) {
+      // Calcula a soma dos estoques das variações
+      totalStock = variants.reduce((sum, v) => {
+        const stock = Math.max(0, parseInt(v.stock) || 0);
+        return sum + stock;
+      }, 0);
+    } else {
+      // Se não houver variações, usa o valor informado
+      totalStock = Math.max(0, parseInt(productData.totalStock) || 0);
+    }
+
     const createData: any = {
       ...productData,
+      totalStock,
     };
 
     if (variants && Array.isArray(variants) && variants.length > 0) {
       createData.variants = {
-        create: variants.map(v => ({
+          create: variants.map(v => ({
           size: v.size,
           color: v.color || 'Padrão',
-          sku: v.sku || `${productData.sku}-${v.size}`,
-          stock: parseInt(v.stock) || 0
+          sku: v.sku || (productData.sku ? `${productData.sku}-${v.size}` : null),
+          stock: Math.max(0, parseInt(v.stock) || 0) // Garante que não seja negativo
         }))
       };
     }
@@ -174,6 +188,8 @@ export class ProductsService {
 
     // Handle Variants Sync if provided
     let variantsUpdate = undefined;
+    let calculatedTotalStock: number | undefined = undefined;
+    
     if (variants && Array.isArray(variants)) {
       // IDs sent in the update payload
       const sentIds = variants.filter(v => v.id).map(v => v.id);
@@ -182,6 +198,12 @@ export class ProductsService {
 
       // Determine what to delete (in DB but not in payload)
       const toDelete = currentIds.filter(id => !sentIds.includes(id));
+
+      // Calcula o estoque total baseado nas variações
+      calculatedTotalStock = variants.reduce((sum, v) => {
+        const stock = Math.max(0, parseInt(v.stock) || 0);
+        return sum + stock;
+      }, 0);
 
       variantsUpdate = {
         deleteMany: {
@@ -192,17 +214,24 @@ export class ProductsService {
           update: {
             size: v.size,
             color: v.color,
-            stock: parseInt(v.stock),
-            sku: v.sku
+            stock: Math.max(0, parseInt(v.stock) || 0), // Garante que não seja negativo
+            sku: v.sku || null
           },
           create: {
             size: v.size,
             color: v.color || 'Padrão',
-            stock: parseInt(v.stock),
-            sku: v.sku || `${productData.sku || product.sku}-${v.size}`
+            stock: Math.max(0, parseInt(v.stock) || 0), // Garante que não seja negativo
+            sku: v.sku || (productData.sku || product.sku ? `${productData.sku || product.sku}-${v.size}` : null)
           }
         }))
       };
+    }
+
+    // Se houver variações, usa o estoque calculado; senão, usa o informado
+    if (calculatedTotalStock !== undefined) {
+      productData.totalStock = calculatedTotalStock;
+    } else if (productData.totalStock !== undefined) {
+      productData.totalStock = Math.max(0, parseInt(productData.totalStock) || 0);
     }
 
     // Handle Images Sync if provided
@@ -273,13 +302,15 @@ export class ProductsService {
     }
 
     // Verifica se há variantes no carrinho
-    const hasCartItems = product.variants?.some(
-      (variant) => variant.cartItems && variant.cartItems.length > 0
-    );
-    if (hasCartItems) {
-      throw new BadRequestException(
-        'Não é possível deletar um produto que está no carrinho de algum cliente. Considere desativar o produto em vez de deletá-lo.'
+    if (product.variants && product.variants.length > 0) {
+      const hasCartItems = product.variants.some(
+        (variant) => variant.cartItems && variant.cartItems.length > 0
       );
+      if (hasCartItems) {
+        throw new BadRequestException(
+          'Não é possível deletar um produto que está no carrinho de algum cliente. Considere desativar o produto em vez de deletá-lo.'
+        );
+      }
     }
 
     // Deleta relacionamentos que não têm onDelete: Cascade

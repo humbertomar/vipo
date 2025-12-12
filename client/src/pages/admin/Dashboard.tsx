@@ -9,16 +9,9 @@ import {
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import {
-    Table,
-    TableBody,
-    TableCell,
-    TableHead,
-    TableHeader,
-    TableRow
-} from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { formatCurrency } from "@/lib/utils";
+import { ResponsiveTable } from "@/components/ResponsiveTable";
 
 export default function Dashboard() {
     const [stats, setStats] = useState({
@@ -64,15 +57,15 @@ export default function Dashboard() {
             {/* Header Section */}
             <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
                 <div>
-                    <h1 className="text-3xl font-bold tracking-tight">Dashboard</h1>
-                    <p className="text-muted-foreground mt-1">
+                    <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">Dashboard</h1>
+                    <p className="text-muted-foreground mt-1 text-sm sm:text-base">
                         Visão geral da sua loja
                     </p>
                 </div>
-                <div className="flex items-center gap-2">
-                    <Link href="/admin/vendas/nova">
-                        <Button className="shadow-lg shadow-primary/20">
-                            <ShoppingBag className="mr-2 h-4 w-4" /> Nova Venda
+                <div className="flex items-center gap-2 w-full md:w-auto">
+                    <Link href="/admin/vendas/nova" className="w-full md:w-auto">
+                        <Button size="lg" className="bg-black text-white hover:bg-gray-800 shadow-lg shadow-black/30 hover:shadow-xl hover:shadow-black/40 transition-all font-semibold w-full md:w-auto">
+                            <ShoppingBag className="mr-2 h-5 w-5" /> Nova Venda
                         </Button>
                     </Link>
                 </div>
@@ -135,9 +128,9 @@ export default function Dashboard() {
                 </Card>
             </div>
 
-            {/* Recent Sales & Charts */}
-            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-7">
-                <Card className="col-span-4">
+            {/* Recent Sales & Updates - Mobile First */}
+            <div className="grid gap-4 grid-cols-1 lg:grid-cols-7">
+                <Card className="lg:col-span-4">
                     <CardHeader>
                         <CardTitle>Vendas Recentes</CardTitle>
                         <CardDescription>
@@ -145,66 +138,85 @@ export default function Dashboard() {
                         </CardDescription>
                     </CardHeader>
                     <CardContent>
-                        <Table>
-                            <TableHeader>
-                                <TableRow>
-                                    <TableHead>Pedido</TableHead>
-                                    <TableHead>Cliente</TableHead>
-                                    <TableHead>Status</TableHead>
-                                    <TableHead className="text-right">Valor</TableHead>
-                                </TableRow>
-                            </TableHeader>
-                            <TableBody>
-                                {loading ? (
-                                    <TableRow>
-                                        <TableCell colSpan={4} className="text-center py-8 text-muted-foreground">Carregando...</TableCell>
-                                    </TableRow>
-                                ) : recentSales.map((sale) => (
-                                    <TableRow key={sale.id}>
-                                        <TableCell className="font-medium">
-                                            {sale.orderNumber || (sale.id ? sale.id.substring(0, 8).toUpperCase() : 'N/A')}
-                                        </TableCell>
-                                        <TableCell>
-                                            {sale.user?.name || 'Cliente Balcão'}
-                                        </TableCell>
-                                        <TableCell>
-                                            <Badge variant={sale.status === 'CONFIRMED' ? 'default' : 'secondary'}>
-                                                {sale.status}
-                                            </Badge>
-                                        </TableCell>
-                                        <TableCell className="text-right font-medium">
-                                            {formatCurrency(sale.totalInCents)}
-                                        </TableCell>
-                                    </TableRow>
-                                ))}
-                            </TableBody>
-                        </Table>
+                        <ResponsiveTable
+                            data={recentSales}
+                            columns={[
+                                {
+                                    key: 'orderNumber',
+                                    label: 'Pedido',
+                                    render: (sale) => (
+                                        <span className="font-medium">#{sale.orderNumber || (sale.id ? sale.id.substring(0, 8).toUpperCase() : 'N/A')}</span>
+                                    )
+                                },
+                                {
+                                    key: 'customer',
+                                    label: 'Cliente',
+                                    render: (sale) => (
+                                        <span>{sale.user?.name || 'Cliente Balcão'}</span>
+                                    )
+                                },
+                                {
+                                    key: 'status',
+                                    label: 'Status',
+                                    render: (sale) => (
+                                        <Badge variant={sale.status === 'CONFIRMED' ? 'default' : 'secondary'}>
+                                            {sale.status}
+                                        </Badge>
+                                    )
+                                },
+                                {
+                                    key: 'total',
+                                    label: 'Valor',
+                                    render: (sale) => (
+                                        <span className="font-medium">{formatCurrency(sale.totalInCents)}</span>
+                                    )
+                                }
+                            ]}
+                            keyExtractor={(sale) => sale.id}
+                            loading={loading}
+                            emptyMessage="Nenhuma venda encontrada."
+                        />
                     </CardContent>
                 </Card>
 
-                <Card className="col-span-3">
+                <Card className="lg:col-span-3">
                     <CardHeader>
-                        <CardTitle>Ataulizações</CardTitle>
+                        <CardTitle>Atualizações</CardTitle>
                         <CardDescription>
-                            Notificações do sistema
+                            Informações importantes da loja
                         </CardDescription>
                     </CardHeader>
                     <CardContent>
                         <div className="space-y-4">
-                            <div className="flex items-center">
-                                <span className="relative flex h-2 w-2 mr-2">
+                            <div className="flex items-start gap-3 p-3 rounded-lg bg-muted/50">
+                                <span className="relative flex h-2 w-2 mt-1.5">
                                     <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
                                     <span className="relative inline-flex rounded-full h-2 w-2 bg-green-500"></span>
                                 </span>
-                                <p className="text-sm text-muted-foreground">Seed executado com sucesso</p>
+                                <div className="flex-1">
+                                    <p className="text-sm font-medium">Pedidos Pendentes</p>
+                                    <p className="text-xs text-muted-foreground mt-0.5">
+                                        {stats.pendingOrders} pedido{stats.pendingOrders !== 1 ? 's' : ''} aguardando processamento
+                                    </p>
+                                </div>
                             </div>
-                            <div className="flex items-center">
-                                <span className="h-2 w-2 bg-blue-500 rounded-full mr-2"></span>
-                                <p className="text-sm text-muted-foreground">Estoque atualizado</p>
+                            <div className="flex items-start gap-3 p-3 rounded-lg bg-muted/50">
+                                <span className="h-2 w-2 bg-blue-500 rounded-full mt-1.5"></span>
+                                <div className="flex-1">
+                                    <p className="text-sm font-medium">Receita do Mês</p>
+                                    <p className="text-xs text-muted-foreground mt-0.5">
+                                        Total: {formatCurrency(stats.totalRevenue)}
+                                    </p>
+                                </div>
                             </div>
-                            <div className="flex items-center">
-                                <span className="h-2 w-2 bg-gray-300 rounded-full mr-2"></span>
-                                <p className="text-sm text-muted-foreground">Sistema operacional v1.0</p>
+                            <div className="flex items-start gap-3 p-3 rounded-lg bg-muted/50">
+                                <span className="h-2 w-2 bg-orange-500 rounded-full mt-1.5"></span>
+                                <div className="flex-1">
+                                    <p className="text-sm font-medium">Vendas Realizadas</p>
+                                    <p className="text-xs text-muted-foreground mt-0.5">
+                                        {stats.totalSales} venda{stats.totalSales !== 1 ? 's' : ''} registrada{stats.totalSales !== 1 ? 's' : ''}
+                                    </p>
+                                </div>
                             </div>
                         </div>
                     </CardContent>

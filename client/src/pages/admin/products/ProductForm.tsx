@@ -50,6 +50,8 @@ export default function ProductForm() {
         isActive: true as boolean,
         isFeatured: false as boolean
     });
+    const [errors, setErrors] = useState<Record<string, string>>({});
+    const [slugManuallyEdited, setSlugManuallyEdited] = useState(false);
 
     const [variants, setVariants] = useState<any[]>([]);
 
@@ -58,6 +60,17 @@ export default function ProductForm() {
     // File upload refs
     const fileInputRef = useRef<HTMLInputElement>(null);
     const uploadIndexRef = useRef<number | null>(null);
+
+    // Calcula o estoque total baseado nas variações
+    const calculateTotalStock = (variantsList: any[]): number => {
+        if (!variantsList || variantsList.length === 0) {
+            return 0;
+        }
+        return variantsList.reduce((sum, variant) => {
+            const stock = parseInt(variant.stock) || 0;
+            return sum + Math.max(0, stock); // Garante que não seja negativo
+        }, 0);
+    };
 
     useEffect(() => {
         fetchCategories();
@@ -99,6 +112,9 @@ export default function ProductForm() {
 
             if (product.variants) {
                 setVariants(product.variants);
+                // Calcula estoque total baseado nas variações
+                const calculatedTotal = calculateTotalStock(product.variants);
+                setFormData(prev => ({ ...prev, totalStock: calculatedTotal.toString() }));
             }
             if (product.images) {
                 setImages(product.images.sort((a: any, b: any) => a.order - b.order));
@@ -111,34 +127,85 @@ export default function ProductForm() {
         }
     };
 
+    // Função para gerar slug a partir do nome
+    const generateSlug = (text: string): string => {
+        return text
+            .toLowerCase()
+            .normalize('NFD')
+            .replace(/[\u0300-\u036f]/g, '') // Remove acentos
+            .replace(/[^a-z0-9]+/g, '-') // Substitui espaços e caracteres especiais por hífen
+            .replace(/^-+|-+$/g, ''); // Remove hífens do início e fim
+    };
+
+    // Auto-preenchimento de slug quando o nome muda
+    const handleNameChange = (value: string) => {
+        setFormData({ ...formData, name: value });
+        if (!slugManuallyEdited) {
+            setFormData(prev => ({ ...prev, slug: generateSlug(value) }));
+        }
+    };
+
+    const handleSlugChange = (value: string) => {
+        setFormData({ ...formData, slug: value });
+        setSlugManuallyEdited(true);
+    };
+
     const handlePriceChange = (value: string) => {
-        // Allow only numbers and one comma/dot
-        const cleanValue = value.replace(/[^0-9.,]/g, '').replace(',', '.');
-        setFormData({ ...formData, price: cleanValue });
+        // Remove tudo exceto números
+        const numbersOnly = value.replace(/\D/g, '');
+        if (numbersOnly === '') {
+            setFormData({ ...formData, price: '' });
+            return;
+        }
+        // Converte para número e formata como decimal (centavos / 100)
+        const cents = parseInt(numbersOnly);
+        const reais = (cents / 100).toFixed(2);
+        setFormData({ ...formData, price: reais });
+    };
+
+    const formatPriceInput = (value: string): string => {
+        if (!value || value === '') return '';
+        const num = parseFloat(value);
+        if (isNaN(num)) return '';
+        // Formata como BRL mas sem o símbolo R$ - usa vírgula como separador decimal
+        return num.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
     };
 
     const formatCurrencyDisplay = (value: string) => {
-        if (!value) return '';
-        const number = parseFloat(value.replace(',', '.'));
-        if (isNaN(number)) return value;
+        if (!value || value === '') return 'R$ 0,00';
+        const number = parseFloat(value);
+        if (isNaN(number)) return 'R$ 0,00';
         return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(number);
     };
 
     // Variant Helpers
     const addVariant = () => {
-        setVariants([...variants, { id: null, size: '', color: '', stock: 0, sku: '' }]);
+        const newVariants = [...variants, { id: null, size: '', color: '', stock: 0, sku: '' }];
+        setVariants(newVariants);
+        // Atualiza estoque total automaticamente
+        const newTotalStock = calculateTotalStock(newVariants);
+        setFormData(prev => ({ ...prev, totalStock: newTotalStock.toString() }));
     };
 
     const removeVariant = (index: number) => {
         const newVariants = [...variants];
         newVariants.splice(index, 1);
         setVariants(newVariants);
+        // Atualiza estoque total automaticamente
+        const newTotalStock = calculateTotalStock(newVariants);
+        setFormData(prev => ({ ...prev, totalStock: newTotalStock.toString() }));
     };
 
     const updateVariant = (index: number, field: string, value: any) => {
         const newVariants = [...variants];
         newVariants[index] = { ...newVariants[index], [field]: value };
         setVariants(newVariants);
+
+        // Se o campo alterado for 'stock', recalcula o estoque total
+        if (field === 'stock') {
+            const newTotalStock = calculateTotalStock(newVariants);
+            setFormData(prev => ({ ...prev, totalStock: newTotalStock.toString() }));
+        }
     };
 
     // Image Helpers
@@ -191,15 +258,61 @@ export default function ProductForm() {
         }
     };
 
+    const validateForm = (): boolean => {
+        const newErrors: Record<string, string> = {};
+
+        if (!formData.name.trim()) {
+            newErrors.name = 'Nome do produto é obrigatório';
+        }
+        if (!formData.slug.trim()) {
+            newErrors.slug = 'Slug é obrigatório';
+        }
+        if (!formData.categoryId) {
+            newErrors.categoryId = 'Categoria é obrigatória';
+        }
+        if (!formData.price || parseFloat(formData.price) <= 0) {
+            newErrors.price = 'Preço deve ser maior que zero';
+        }
+        // SKU só é obrigatório se não houver variações
+        if (variants.length === 0 && !formData.sku.trim()) {
+            newErrors.sku = 'SKU é obrigatório quando não há variações';
+        }
+        // Se houver variações, verifica se pelo menos uma tem SKU
+        if (variants.length > 0) {
+            const hasVariantSku = variants.some(v => v.sku && v.sku.trim());
+            if (!hasVariantSku && !formData.sku.trim()) {
+                newErrors.sku = 'Adicione pelo menos um SKU (no produto ou nas variações)';
+            }
+        }
+        const totalStockNum = parseInt(formData.totalStock) || 0;
+        if (totalStockNum < 0) {
+            newErrors.totalStock = 'Estoque não pode ser negativo';
+        }
+
+        setErrors(newErrors);
+        return Object.keys(newErrors).length === 0;
+    };
+
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
+
+        if (!validateForm()) {
+            toast.error("Por favor, preencha todos os campos obrigatórios corretamente");
+            return;
+        }
+
         setLoading(true);
 
         try {
+            // Calcula estoque total baseado nas variações se houver
+            const finalTotalStock = variants.length > 0
+                ? calculateTotalStock(variants)
+                : Math.max(0, parseInt(formData.totalStock) || 0);
+
             const payload = {
                 ...formData,
-                priceInCents: Math.round(parseFloat(formData.price.replace(',', '.')) * 100),
-                totalStock: parseInt(formData.totalStock),
+                priceInCents: Math.round(parseFloat(formData.price) * 100),
+                totalStock: finalTotalStock, // Usa o calculado se houver variações, senão usa o informado
                 description: formData.description || null,
                 shortDescription: formData.shortDescription || null,
                 isActive: Boolean(formData.isActive),
@@ -208,7 +321,7 @@ export default function ProductForm() {
                     id: v.id,
                     size: v.size,
                     color: v.color,
-                    stock: v.stock,
+                    stock: Math.max(0, v.stock || 0), // Garante que não seja negativo
                     sku: v.sku
                 })),
                 images: images.map((img, idx) => ({
@@ -369,24 +482,37 @@ export default function ProductForm() {
                         <CardContent className="space-y-4">
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                 <div className="space-y-2">
-                                    <Label htmlFor="name">Nome do Produto</Label>
+                                    <Label htmlFor="name">Nome do Produto *</Label>
                                     <Input
                                         id="name"
                                         value={formData.name}
-                                        onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                                        onChange={(e) => handleNameChange(e.target.value)}
                                         required
-                                        placeholder="Ex: Camiseta Vipo"
+                                        placeholder="Ex: Sunga Vipo"
+                                        aria-invalid={!!errors.name}
+                                        className={errors.name ? 'border-destructive' : ''}
                                     />
+                                    {errors.name && (
+                                        <p className="text-sm text-destructive">{errors.name}</p>
+                                    )}
                                 </div>
                                 <div className="space-y-2">
-                                    <Label htmlFor="slug">Slug (URL)</Label>
+                                    <Label htmlFor="slug">Slug (URL) *</Label>
                                     <Input
                                         id="slug"
                                         value={formData.slug}
-                                        onChange={(e) => setFormData({ ...formData, slug: e.target.value })}
+                                        onChange={(e) => handleSlugChange(e.target.value)}
                                         required
-                                        placeholder="ex: camiseta-vipo-azul"
+                                        placeholder="ex: sunga-vipo-azul"
+                                        aria-invalid={!!errors.slug}
+                                        className={errors.slug ? 'border-destructive' : ''}
                                     />
+                                    {errors.slug && (
+                                        <p className="text-sm text-destructive">{errors.slug}</p>
+                                    )}
+                                    <p className="text-xs text-muted-foreground">
+                                        Gerado automaticamente a partir do nome. Você pode editar se necessário.
+                                    </p>
                                 </div>
                             </div>
 
@@ -420,41 +546,115 @@ export default function ProductForm() {
                         <CardContent className="space-y-4">
                             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                                 <div className="space-y-2">
-                                    <Label htmlFor="price">Preço (R$)</Label>
-                                    <Input
-                                        id="price"
-                                        value={formData.price}
-                                        onChange={(e) => handlePriceChange(e.target.value)}
-                                        onBlur={(e) => {
-                                            // Optional: format on blur
-                                            // setFormData({...formData, price: e.target.value.replace('.', ',')}) 
-                                        }}
-                                        required
-                                        placeholder="0.00"
-                                    />
+                                    <Label htmlFor="price">Preço (R$) *</Label>
+                                    <div className="relative">
+                                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground font-medium">R$</span>
+                                        <Input
+                                            id="price"
+                                            value={formData.price ? formatPriceInput(formData.price) : ''}
+                                            onChange={(e) => handlePriceChange(e.target.value)}
+                                            onBlur={(e) => {
+                                                // Garante formatação ao sair do campo
+                                                if (formData.price) {
+                                                    const num = parseFloat(formData.price);
+                                                    if (!isNaN(num)) {
+                                                        setFormData(prev => ({ ...prev, price: num.toFixed(2) }));
+                                                    }
+                                                }
+                                            }}
+                                            required
+                                            placeholder="0,00"
+                                            className="pl-10"
+                                            aria-invalid={!!errors.price}
+                                            style={errors.price ? { borderColor: 'hsl(var(--destructive))' } : {}}
+                                        />
+                                    </div>
+                                    {errors.price && (
+                                        <p className="text-sm text-destructive">{errors.price}</p>
+                                    )}
                                     <p className="text-xs text-muted-foreground">
-                                        Exibido: {formatCurrencyDisplay(formData.price)}
                                     </p>
                                 </div>
                                 <div className="space-y-2">
-                                    <Label htmlFor="sku">SKU</Label>
+                                    <Label htmlFor="sku">
+                                        SKU {variants.length === 0 ? '*' : ''}
+                                    </Label>
                                     <Input
                                         id="sku"
                                         value={formData.sku}
-                                        onChange={(e) => setFormData({ ...formData, sku: e.target.value })}
-                                        required
-                                        placeholder="PROD-001"
+                                        onChange={(e) => {
+                                            setFormData({ ...formData, sku: e.target.value });
+                                            // Remove erro se houver
+                                            if (errors.sku) {
+                                                setErrors(prev => {
+                                                    const next = { ...prev };
+                                                    delete next.sku;
+                                                    return next;
+                                                });
+                                            }
+                                        }}
+                                        required={variants.length === 0}
+                                        placeholder={variants.length > 0 ? "Opcional (cada variação tem seu SKU)" : "PROD-001"}
+                                        aria-invalid={!!errors.sku}
+                                        className={errors.sku ? 'border-destructive' : ''}
                                     />
+                                    {errors.sku && (
+                                        <p className="text-sm text-destructive">{errors.sku}</p>
+                                    )}
+                                    {variants.length > 0 && (
+                                        <p className="text-xs text-muted-foreground">
+                                            Opcional quando há variações. Cada variação pode ter seu próprio SKU.
+                                        </p>
+                                    )}
                                 </div>
                                 <div className="space-y-2">
-                                    <Label htmlFor="totalStock">Estoque Total</Label>
+                                    <Label htmlFor="totalStock">
+                                        Estoque Total {variants.length === 0 ? '*' : ''}
+                                    </Label>
                                     <Input
                                         id="totalStock"
                                         type="number"
+                                        min="0"
                                         value={formData.totalStock}
-                                        onChange={(e) => setFormData({ ...formData, totalStock: e.target.value })}
-                                        required
+                                        onChange={(e) => {
+                                            const value = e.target.value;
+                                            // Permite apenas números não negativos
+                                            if (value === '' || (parseInt(value) >= 0 && !isNaN(parseInt(value)))) {
+                                                setFormData({ ...formData, totalStock: value });
+                                                // Remove erro se houver
+                                                if (errors.totalStock) {
+                                                    setErrors(prev => {
+                                                        const next = { ...prev };
+                                                        delete next.totalStock;
+                                                        return next;
+                                                    });
+                                                }
+                                            }
+                                        }}
+                                        onBlur={(e) => {
+                                            // Garante que o valor mínimo seja 0
+                                            const numValue = parseInt(e.target.value) || 0;
+                                            if (numValue < 0) {
+                                                setFormData(prev => ({ ...prev, totalStock: '0' }));
+                                            }
+                                        }}
+                                        required={variants.length === 0}
+                                        disabled={variants.length > 0}
+                                        aria-invalid={!!errors.totalStock}
+                                        className={errors.totalStock ? 'border-destructive' : ''}
                                     />
+                                    {errors.totalStock && (
+                                        <p className="text-sm text-destructive">{errors.totalStock}</p>
+                                    )}
+                                    {variants.length > 0 ? (
+                                        <p className="text-xs text-muted-foreground">
+                                            Calculado automaticamente: {formData.totalStock} unidade{parseInt(formData.totalStock) !== 1 ? 's' : ''} (soma dos estoques das variações)
+                                        </p>
+                                    ) : (
+                                        <p className="text-xs text-muted-foreground">
+                                            Estoque total do produto
+                                        </p>
+                                    )}
                                 </div>
                             </div>
                         </CardContent>
@@ -511,8 +711,23 @@ export default function ProductForm() {
                                                 <TableCell>
                                                     <Input
                                                         type="number"
+                                                        min="0"
                                                         value={variant.stock}
-                                                        onChange={(e) => updateVariant(index, 'stock', parseInt(e.target.value) || 0)}
+                                                        onChange={(e) => {
+                                                            const value = e.target.value;
+                                                            // Permite apenas números não negativos
+                                                            if (value === '' || (parseInt(value) >= 0 && !isNaN(parseInt(value)))) {
+                                                                updateVariant(index, 'stock', parseInt(value) || 0);
+                                                                // O updateVariant já recalcula o totalStock automaticamente
+                                                            }
+                                                        }}
+                                                        onBlur={(e) => {
+                                                            // Garante que o valor mínimo seja 0
+                                                            const numValue = parseInt(e.target.value) || 0;
+                                                            if (numValue < 0) {
+                                                                updateVariant(index, 'stock', 0);
+                                                            }
+                                                        }}
                                                     />
                                                 </TableCell>
                                                 <TableCell>
@@ -540,12 +755,18 @@ export default function ProductForm() {
                         </CardHeader>
                         <CardContent className="space-y-4">
                             <div className="space-y-2">
-                                <Label htmlFor="category">Categoria</Label>
+                                <Label htmlFor="category">Categoria *</Label>
                                 <Select
                                     value={formData.categoryId}
-                                    onValueChange={(value) => setFormData({ ...formData, categoryId: value })}
+                                    onValueChange={(value) => {
+                                        setFormData({ ...formData, categoryId: value });
+                                        setErrors(prev => ({ ...prev, categoryId: '' }));
+                                    }}
                                 >
-                                    <SelectTrigger>
+                                    <SelectTrigger
+                                        className={errors.categoryId ? 'border-destructive' : ''}
+                                        aria-invalid={!!errors.categoryId}
+                                    >
                                         <SelectValue placeholder="Selecione uma categoria" />
                                     </SelectTrigger>
                                     <SelectContent>
@@ -556,6 +777,9 @@ export default function ProductForm() {
                                         ))}
                                     </SelectContent>
                                 </Select>
+                                {errors.categoryId && (
+                                    <p className="text-sm text-destructive">{errors.categoryId}</p>
+                                )}
                             </div>
 
                             <div className="flex flex-col gap-4 mt-4">
@@ -568,8 +792,8 @@ export default function ProductForm() {
                                         }}
                                         disabled={loading || loadingData}
                                     />
-                                    <Label 
-                                        htmlFor="isActive" 
+                                    <Label
+                                        htmlFor="isActive"
                                         className="cursor-pointer select-none"
                                     >
                                         Produto Ativo (Visível na loja)
@@ -585,8 +809,8 @@ export default function ProductForm() {
                                         }}
                                         disabled={loading || loadingData}
                                     />
-                                    <Label 
-                                        htmlFor="isFeatured" 
+                                    <Label
+                                        htmlFor="isFeatured"
                                         className="cursor-pointer select-none"
                                     >
                                         Destaque (Aparece na home)
@@ -600,7 +824,7 @@ export default function ProductForm() {
                         <Link href="/admin/produtos">
                             <Button type="button" variant="outline">Cancelar</Button>
                         </Link>
-                        <Button type="submit" disabled={loading}>
+                        <Button type="submit" disabled={loading} className="bg-black text-white hover:bg-gray-800 shadow-lg shadow-black/30 hover:shadow-xl hover:shadow-black/40">
                             <Save className="mr-2 h-4 w-4" />
                             {loading ? 'Salvando...' : 'Salvar Produto'}
                         </Button>

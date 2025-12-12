@@ -1,12 +1,4 @@
 import { useState, useEffect } from 'react';
-import {
-    Table,
-    TableBody,
-    TableCell,
-    TableHead,
-    TableHeader,
-    TableRow
-} from '@/components/ui/table';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -16,7 +8,6 @@ import {
     DialogContent,
     DialogHeader,
     DialogTitle,
-    DialogTrigger,
     DialogFooter
 } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
@@ -24,13 +15,12 @@ import { Switch } from "@/components/ui/switch";
 import { Search, Plus, Edit, Trash2 } from 'lucide-react';
 import { toast } from "sonner";
 import { DeleteConfirmDialog } from '@/components/DeleteConfirmDialog';
+import { ResponsiveTable } from '@/components/ResponsiveTable';
 
 export default function CategoriesList() {
     const [categories, setCategories] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState('');
-
-    // Modal State
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editingCategory, setEditingCategory] = useState<any>(null);
     const [formData, setFormData] = useState({ name: '', slug: '', isActive: true });
@@ -127,8 +117,8 @@ export default function CategoriesList() {
     return (
         <div className="space-y-6">
             <div className="flex flex-col sm:flex-row justify-between items-center gap-4">
-                <h1 className="text-3xl font-bold tracking-tight">Categorias</h1>
-                <Button onClick={handleCreate}>
+                <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">Categorias</h1>
+                <Button onClick={handleCreate} className="bg-black text-white hover:bg-gray-800 shadow-lg shadow-black/30 hover:shadow-xl hover:shadow-black/40 w-full sm:w-auto touch-target">
                     <Plus className="mr-2 h-4 w-4" />
                     Nova Categoria
                 </Button>
@@ -136,9 +126,9 @@ export default function CategoriesList() {
 
             <Card>
                 <CardHeader>
-                    <div className="flex justify-between items-center">
+                    <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                         <CardTitle>Listagem de Categorias</CardTitle>
-                        <div className="relative w-64">
+                        <div className="relative w-full sm:w-64">
                             <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
                             <Input
                                 placeholder="Buscar categoria..."
@@ -150,54 +140,68 @@ export default function CategoriesList() {
                     </div>
                 </CardHeader>
                 <CardContent>
-                    <Table>
-                        <TableHeader>
-                            <TableRow>
-                                <TableHead>Nome</TableHead>
-                                <TableHead>Slug</TableHead>
-                                <TableHead>Produtos</TableHead>
-                                <TableHead>Status</TableHead>
-                                <TableHead className="text-right">Ações</TableHead>
-                            </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                            {loading ? (
-                                <TableRow>
-                                    <TableCell colSpan={5} className="text-center h-24">Carregando...</TableCell>
-                                </TableRow>
-                            ) : filteredCategories.length === 0 ? (
-                                <TableRow>
-                                    <TableCell colSpan={5} className="text-center h-24">Nenhuma categoria encontrada.</TableCell>
-                                </TableRow>
-                            ) : (
-                                filteredCategories.map((category) => (
-                                    <TableRow key={category.id}>
-                                        <TableCell className="font-medium">{category.name}</TableCell>
-                                        <TableCell>{category.slug}</TableCell>
-                                        <TableCell>{category._count?.products || 0}</TableCell>
-                                        <TableCell>
-                                            <Badge variant={category.isActive ? 'default' : 'secondary'}>
-                                                {category.isActive ? 'Ativo' : 'Inativo'}
-                                            </Badge>
-                                        </TableCell>
-                                        <TableCell className="text-right">
-                                            <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleEdit(category)}>
-                                                <Edit className="h-4 w-4" />
-                                            </Button>
-                                            <Button variant="ghost" size="icon" className="h-8 w-8 text-red-500 hover:text-red-600" onClick={() => handleDeleteClick(category.id)}>
-                                                <Trash2 className="h-4 w-4" />
-                                            </Button>
-                                        </TableCell>
-                                    </TableRow>
-                                ))
-                            )}
-                        </TableBody>
-                    </Table>
+                    <ResponsiveTable
+                        data={filteredCategories}
+                        columns={[
+                            {
+                                key: 'name',
+                                label: 'Nome',
+                                render: (category) => <span className="font-medium">{category.name}</span>
+                            },
+                            {
+                                key: 'slug',
+                                label: 'Slug',
+                                render: (category) => <span className="text-sm text-muted-foreground">{category.slug}</span>,
+                                hideOnMobile: true
+                            },
+                            {
+                                key: 'products',
+                                label: 'Produtos',
+                                render: (category) => <span>{category._count?.products || 0}</span>
+                            },
+                            {
+                                key: 'status',
+                                label: 'Status',
+                                render: (category) => (
+                                    <Badge variant={category.isActive ? 'default' : 'secondary'}>
+                                        {category.isActive ? 'Ativo' : 'Inativo'}
+                                    </Badge>
+                                )
+                            },
+                            {
+                                key: 'actions',
+                                label: 'Ações',
+                                render: (category) => (
+                                    <div className="flex gap-2 justify-end">
+                                        <Button
+                                            variant="ghost"
+                                            size="icon"
+                                            className="h-8 w-8 touch-target"
+                                            onClick={() => handleEdit(category)}
+                                        >
+                                            <Edit className="h-4 w-4" />
+                                        </Button>
+                                        <Button
+                                            variant="ghost"
+                                            size="icon"
+                                            className="h-8 w-8 text-red-500 hover:text-red-600 touch-target"
+                                            onClick={() => handleDeleteClick(category.id)}
+                                        >
+                                            <Trash2 className="h-4 w-4" />
+                                        </Button>
+                                    </div>
+                                )
+                            }
+                        ]}
+                        keyExtractor={(category) => category.id}
+                        loading={loading}
+                        emptyMessage="Nenhuma categoria encontrada."
+                    />
                 </CardContent>
             </Card>
 
             <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
-                <DialogContent>
+                <DialogContent className="max-w-full sm:max-w-md">
                     <DialogHeader>
                         <DialogTitle>{editingCategory ? 'Editar Categoria' : 'Nova Categoria'}</DialogTitle>
                     </DialogHeader>
@@ -228,9 +232,9 @@ export default function CategoriesList() {
                             />
                             <Label htmlFor="isActive">Ativo</Label>
                         </div>
-                        <DialogFooter>
-                            <Button type="button" variant="outline" onClick={() => setIsModalOpen(false)}>Cancelar</Button>
-                            <Button type="submit" disabled={isSaving}>{isSaving ? 'Salvando...' : 'Salvar'}</Button>
+                        <DialogFooter className="flex-col sm:flex-row gap-2">
+                            <Button type="button" variant="outline" onClick={() => setIsModalOpen(false)} className="w-full sm:w-auto">Cancelar</Button>
+                            <Button type="submit" disabled={isSaving} className="bg-black text-white hover:bg-gray-800 shadow-lg shadow-black/30 w-full sm:w-auto">{isSaving ? 'Salvando...' : 'Salvar'}</Button>
                         </DialogFooter>
                     </form>
                 </DialogContent>

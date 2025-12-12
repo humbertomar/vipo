@@ -2,30 +2,31 @@ import { useState, useEffect } from 'react';
 import { formatCurrency, formatCurrencyDecimal } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
 import { useProducts } from '@/hooks/useProducts';
 import { useCart } from '@/contexts/CartContext';
 import { toast } from 'sonner';
+import { Filter, X } from 'lucide-react';
 
 /**
  * Página de Catálogo
- * Listagem de produtos com filtros
+ * Versão corrigida com Cards bem definidos e UI equilibrada
  */
 export default function Catalog() {
   const [page, setPage] = useState(1);
-  // maxPrice em reais para o slider (0-1000)
+  const [filtersOpen, setFiltersOpen] = useState(false);
   const [maxPriceReais, setMaxPriceReais] = useState(1000);
   const [filters, setFilters] = useState({
     search: '',
     categoryId: '',
     minPrice: 0,
-    maxPrice: 100000, // em centavos (1000 reais)
+    maxPrice: 100000,
   });
   const [categories, setCategories] = useState<any[]>([]);
   const [addingToCart, setAddingToCart] = useState<Set<string>>(new Set());
   const { products, loading, pagination } = useProducts(page, 20, filters);
   const { addItem, items } = useCart();
 
-  // Buscar categorias
   useEffect(() => {
     const fetchCategories = async () => {
       try {
@@ -38,7 +39,6 @@ export default function Catalog() {
         console.error('Erro ao buscar categorias:', err);
       }
     };
-
     fetchCategories();
   }, []);
 
@@ -48,7 +48,6 @@ export default function Catalog() {
   };
 
   const handleMaxPriceChange = (value: number) => {
-    // Converte reais para centavos
     setMaxPriceReais(value);
     setFilters(prev => ({ ...prev, maxPrice: value * 100 }));
     setPage(1);
@@ -59,17 +58,17 @@ export default function Catalog() {
       toast.error('Produto sem variantes disponíveis');
       return;
     }
-
     const variant = product.variants[0];
+    if (variant.stock <= 0 || product.totalStock <= 0) {
+      toast.error('Produto sem estoque disponível');
+      return;
+    }
     const itemKey = `${product.id}-${variant.id}`;
-    
-    // Verifica se já está no carrinho
-    const existingItem = items.find(item => 
+    const existingItem = items.find(item =>
       item.productId === product.id && item.variantId === variant.id
     );
 
     if (existingItem) {
-      // Se já existe, mostra mensagem e não adiciona novamente
       toast.info(`${product.name} já está no carrinho!`, {
         description: `Quantidade atual: ${existingItem.quantity}`,
         duration: 2000,
@@ -77,11 +76,9 @@ export default function Catalog() {
       return;
     }
 
-    // Adiciona feedback visual
     setAddingToCart(prev => new Set(prev).add(itemKey));
-
     const cartItem = {
-      id: itemKey, // ID consistente
+      id: itemKey,
       productId: product.id,
       variantId: variant.id,
       name: product.name,
@@ -91,16 +88,11 @@ export default function Catalog() {
       size: variant.size,
       color: variant.color,
     };
-
     addItem(cartItem);
-    
-    // Feedback visual e toast
     toast.success(`${product.name} adicionado ao carrinho!`, {
       icon: '🛒',
       duration: 2000,
     });
-
-    // Remove feedback visual após animação
     setTimeout(() => {
       setAddingToCart(prev => {
         const next = new Set(prev);
@@ -111,263 +103,209 @@ export default function Catalog() {
   };
 
   return (
-    <div className="min-h-screen bg-background">
-      {/* Header */}
-      <div className="bg-black text-white py-12">
+    <div className="min-h-screen bg-gray-50/50">
+      {/* Header Clássico */}
+      <div className="bg-white border-b border-gray-100 py-8">
         <div className="container mx-auto px-4">
-          <h1 className="text-5xl font-bold mb-2">Catálogo Completo</h1>
-          <p className="text-gray-300">Explore nossa coleção de sungas e uniformes</p>
+          <h1 className="text-3xl font-bold mb-2">Catálogo</h1>
+          <p className="text-muted-foreground">Nossos produtos</p>
         </div>
       </div>
 
       <div className="container mx-auto px-4 py-8">
-        <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
-          {/* Filters Sidebar */}
-          <div className="lg:col-span-1">
-            <div className="bg-white p-6 rounded-xl shadow-sm sticky top-24 border border-gray-200">
-              <h2 className="font-bold text-xl mb-6">Filtros</h2>
-
-              {/* Search */}
-              <div className="mb-6">
-                <label className="block text-sm font-semibold mb-2">Buscar</label>
-                <input
-                  type="text"
-                  placeholder="Nome do produto..."
-                  value={filters.search}
-                  onChange={(e) => handleFilterChange('search', e.target.value)}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-black"
-                />
-              </div>
-
-              {/* Categories */}
-              <div className="mb-6">
-                <label className="block text-sm font-semibold mb-2">Categoria</label>
-                <select
-                  value={filters.categoryId}
-                  onChange={(e) => handleFilterChange('categoryId', e.target.value)}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-black transition-all hover:border-gray-400 cursor-pointer"
-                >
-                  <option value="">Todas as categorias</option>
-                  {categories.map((cat) => (
-                    <option key={cat.id} value={cat.id}>
-                      {cat.name}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              {/* Price Range */}
-              <div className="mb-6">
-                <label className="block text-sm font-semibold mb-2">Preço Máximo</label>
-                <input
-                  type="range"
-                  min="0"
-                  max="1000"
-                  step="10"
-                  value={maxPriceReais}
-                  onChange={(e) => handleMaxPriceChange(parseInt(e.target.value))}
-                  className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-black hover:accent-gray-800 transition-all"
-                  style={{
-                    background: `linear-gradient(to right, #000 0%, #000 ${(maxPriceReais / 1000) * 100}%, #e5e7eb ${(maxPriceReais / 1000) * 100}%, #e5e7eb 100%)`
-                  }}
-                />
-                <div className="flex items-center justify-between mt-2">
-                  <span className="text-xs text-gray-500">R$ 0,00</span>
-                  <span className="text-sm font-semibold text-black bg-gray-100 px-3 py-1 rounded-md">
-                    Até {formatCurrencyDecimal(maxPriceReais)}
-                  </span>
-                  <span className="text-xs text-gray-500">R$ 1.000,00</span>
-                </div>
-              </div>
-
-              {/* Reset Filters */}
-              <Button
-                variant="outline"
-                className="w-full hover:bg-gray-50 hover:border-gray-400 active:scale-95 transition-all duration-200"
-                onClick={() => {
-                  setMaxPriceReais(1000);
-                  setFilters({
-                    search: '',
-                    categoryId: '',
-                    minPrice: 0,
-                    maxPrice: 100000,
-                  });
-                  setPage(1);
-                }}
-              >
-                🔄 Limpar Filtros
+        {/* Mobile Filters Trigger */}
+        <div className="lg:hidden mb-6">
+          <Sheet open={filtersOpen} onOpenChange={setFiltersOpen}>
+            <SheetTrigger asChild>
+              <Button variant="outline" className="w-full">
+                <Filter className="mr-2 h-4 w-4" />
+                Filtros
               </Button>
-            </div>
-          </div>
-
-          {/* Products Grid */}
-          <div className="lg:col-span-3">
-            {loading ? (
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-                {[...Array(6)].map((_, i) => (
-                  <div key={i} className="bg-muted h-80 rounded-xl animate-pulse" />
-                ))}
-              </div>
-            ) : products.length === 0 ? (
-              <div className="text-center py-16">
-                <div className="text-6xl mb-4">🔍</div>
-                <h3 className="text-2xl font-bold mb-2">Nenhum produto encontrado</h3>
-                <p className="text-muted-foreground mb-6">
-                  Tente ajustar seus filtros
-                </p>
+            </SheetTrigger>
+            <SheetContent side="left">
+              <SheetHeader>
+                <SheetTitle>Filtros</SheetTitle>
+              </SheetHeader>
+              <div className="mt-6 space-y-6">
+                {/* Conteudo Filtros Mobile igual Desktop */}
+                <div>
+                  <label className="text-sm font-medium mb-1.5 block">Buscar</label>
+                  <input
+                    type="text"
+                    placeholder="Buscar..."
+                    value={filters.search}
+                    onChange={(e) => handleFilterChange('search', e.target.value)}
+                    className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                  />
+                </div>
+                <div>
+                  <label className="text-sm font-medium mb-1.5 block">Categoria</label>
+                  <select
+                    value={filters.categoryId}
+                    onChange={(e) => handleFilterChange('categoryId', e.target.value)}
+                    className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                  >
+                    <option value="">Todas</option>
+                    {categories.map((cat) => (
+                      <option key={cat.id} value={cat.id}>{cat.name}</option>
+                    ))}
+                  </select>
+                </div>
                 <Button
+                  className="w-full" variant="secondary"
                   onClick={() => {
-                    setMaxPriceReais(1000);
-                    setFilters({
-                      search: '',
-                      categoryId: '',
-                      minPrice: 0,
-                      maxPrice: 100000,
-                    });
+                    setFilters({ search: '', categoryId: '', minPrice: 0, maxPrice: 100000 });
                     setPage(1);
+                    setFiltersOpen(false);
                   }}
                 >
                   Limpar Filtros
                 </Button>
               </div>
-            ) : (
-              <>
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
-                  {products.map((product) => {
-                    const itemKey = `${product.id}-${product.variants?.[0]?.id}`;
-                    const isInCart = items.some(item => 
-                      item.productId === product.id && item.variantId === product.variants?.[0]?.id
-                    );
-                    const isAdding = addingToCart.has(itemKey);
-                    
-                    return (
-                    <Card
-                      key={product.id}
-                      className="overflow-hidden hover:shadow-2xl transition-all duration-300 hover:-translate-y-2 group border border-gray-200 hover:border-gray-300"
+            </SheetContent>
+          </Sheet>
+        </div>
+
+        <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
+          {/* Sidebar Desktop */}
+          <div className="hidden lg:block lg:col-span-1">
+            <div className="sticky top-24 space-y-6">
+              <div>
+                <h3 className="font-semibold mb-4">Filtros</h3>
+                <div className="space-y-4">
+                  <div>
+                    <label className="text-sm font-medium mb-1.5 block">Buscar</label>
+                    <input
+                      type="text"
+                      placeholder="Buscar..."
+                      value={filters.search}
+                      onChange={(e) => handleFilterChange('search', e.target.value)}
+                      className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium mb-1.5 block">Categoria</label>
+                    <select
+                      value={filters.categoryId}
+                      onChange={(e) => handleFilterChange('categoryId', e.target.value)}
+                      className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                     >
-                      <a href={`/produto/${product.slug}`} className="block">
-                        <div className="aspect-square bg-muted overflow-hidden relative bg-gradient-to-br from-gray-200 to-gray-300">
-                          {product.images && product.images.length > 0 ? (
-                            <img
-                              src={product.images[0].url}
-                              alt={product.name}
-                              className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300"
-                            />
-                          ) : (
-                            <div className="w-full h-full flex items-center justify-center">
-                              <span className="text-gray-500">Sem imagem</span>
-                            </div>
-                          )}
-                          {product.isFeatured && (
-                            <div className="absolute top-3 right-3 bg-red-500 text-white px-3 py-1 rounded-full text-xs font-bold shadow-lg animate-pulse">
-                              ⭐ Destaque
-                            </div>
-                          )}
+                      <option value="">Todas</option>
+                      {categories.map((cat) => (
+                        <option key={cat.id} value={cat.id}>{cat.name}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <Button
+                    className="w-full" variant="outline"
+                    onClick={() => {
+                      setFilters({ search: '', categoryId: '', minPrice: 0, maxPrice: 100000 });
+                      setPage(1);
+                    }}
+                  >
+                    Limpar
+                  </Button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Grid Produtos */}
+          <div className="lg:col-span-3">
+            {loading ? (
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                {[...Array(6)].map((_, i) => (
+                  <div key={i} className="aspect-[3/4] bg-gray-100 rounded-lg animate-pulse" />
+                ))}
+              </div>
+            ) : products.length === 0 ? (
+              <div className="text-center py-12">
+                <p className="text-muted-foreground">Nenhum produto encontrado.</p>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                {products.map((product) => {
+                  const variant = product.variants?.[0];
+                  const isInCart = items.some(item =>
+                    item.productId === product.id && item.variantId === variant?.id
+                  );
+                  const hasStock = variant && variant.stock > 0;
+                  const isAdding = addingToCart.has(`${product.id}-${variant?.id}`);
+
+                  return (
+                    <Card key={product.id} className="group overflow-hidden bg-white hover:shadow-lg transition-shadow duration-300 border border-border/60">
+                      {/* Imagem */}
+                      <a href={`/produto/${product.slug}`} className="block relative aspect-square bg-gray-100 overflow-hidden">
+                        {product.images?.[0] ? (
+                          <img
+                            src={product.images[0].url}
+                            alt={product.name}
+                            className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+                          />
+                        ) : (
+                          <div className="flex h-full items-center justify-center text-gray-400">Sem imagem</div>
+                        )}
+                        {/* Badges */}
+                        <div className="absolute top-2 left-2 flex flex-col gap-1">
                           {isInCart && (
-                            <div className="absolute top-3 left-3 bg-green-500 text-white px-3 py-1 rounded-full text-xs font-bold shadow-lg flex items-center gap-1">
-                              ✓ No carrinho
-                            </div>
+                            <span className="bg-green-600 text-white text-[10px] font-bold px-2 py-1 rounded shadow-sm">
+                              NO CARRINHO
+                            </span>
+                          )}
+                          {!hasStock && (
+                            <span className="bg-black text-white text-[10px] font-bold px-2 py-1 rounded shadow-sm">
+                              ESGOTADO
+                            </span>
                           )}
                         </div>
                       </a>
-                      <div className="p-5">
-                        <a href={`/produto/${product.slug}`}>
-                          <h3 className="font-bold text-lg mb-2 line-clamp-2 group-hover:text-black transition-colors">
+
+                      {/* Conteudo */}
+                      <div className="p-4">
+                        <a href={`/produto/${product.slug}`} className="block mb-2">
+                          <h3 className="font-semibold text-base line-clamp-1 group-hover:text-primary transition-colors">
                             {product.name}
                           </h3>
+                          <p className="text-sm text-muted-foreground line-clamp-1 h-5">
+                            {product.shortDescription}
+                          </p>
                         </a>
-                        <p className="text-sm text-muted-foreground mb-4 line-clamp-2 h-10">
-                          {product.shortDescription}
-                        </p>
-                        <div className="flex justify-between items-center mb-4">
-                          <span className="text-2xl font-bold text-black">
+
+                        <div className="flex items-center justify-between mt-4">
+                          <span className="font-bold text-lg">
                             {formatCurrency(product.priceInCents)}
                           </span>
                         </div>
-                        <div className="flex gap-2">
-                          <a href={`/produto/${product.slug}`} className="flex-1">
-                            <Button 
-                              variant="outline" 
-                              className="w-full hover:bg-gray-100 hover:border-gray-400 active:scale-95 transition-all duration-200"
-                            >
-                              Ver Detalhes
+
+                        <div className="mt-4 grid grid-cols-2 gap-2">
+                          <a href={`/produto/${product.slug}`}>
+                            <Button variant="outline" className="w-full h-9 text-xs">
+                              Detalhes
                             </Button>
                           </a>
                           <Button
-                            className={`flex-1 transition-all duration-200 relative overflow-hidden ${
-                              isAdding
-                                ? 'bg-green-600 hover:bg-green-700 text-white' 
-                                : isInCart
-                                ? 'bg-gray-600 hover:bg-gray-700 text-white'
-                                : 'bg-black text-white hover:bg-gray-800'
-                            } active:scale-95`}
+                            className="w-full h-9 text-xs"
+                            size="sm"
+                            disabled={!hasStock || isInCart || isAdding}
                             onClick={() => handleQuickAddToCart(product)}
-                            disabled={isAdding || isInCart}
                           >
-                            {isAdding ? (
-                              <span className="flex items-center justify-center gap-2">
-                                <span className="animate-spin inline-block w-4 h-4 border-2 border-white border-t-transparent rounded-full"></span>
-                                Adicionando...
-                              </span>
-                            ) : isInCart ? (
-                              <span className="flex items-center justify-center gap-2">
-                                <span>✓</span>
-                                No Carrinho
-                              </span>
-                            ) : (
-                              <span className="flex items-center justify-center gap-2">
-                                <span>🛒</span>
-                                Adicionar
-                              </span>
-                            )}
+                            {isInCart ? 'No Carrinho' : !hasStock ? 'Esgotado' : 'Adicionar'}
                           </Button>
                         </div>
                       </div>
                     </Card>
-                    );
-                  })}
-                </div>
+                  );
+                })}
+              </div>
+            )}
 
-                {/* Pagination */}
-                {pagination && pagination.pages > 1 && (
-                  <div className="flex justify-center gap-2 mt-8">
-                    <Button
-                      variant="outline"
-                      disabled={page === 1}
-                      onClick={() => setPage(page - 1)}
-                      className="hover:bg-gray-100 active:scale-95 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
-                    >
-                      ← Anterior
-                    </Button>
-                    <div className="flex items-center gap-2">
-                      {Array.from({ length: pagination.pages }, (_, i) => i + 1).map(
-                        (p) => (
-                          <Button
-                            key={p}
-                            variant={page === p ? 'default' : 'outline'}
-                            onClick={() => setPage(p)}
-                            className={`transition-all duration-200 active:scale-95 ${
-                              page === p 
-                                ? 'bg-black text-white hover:bg-gray-800 shadow-md' 
-                                : 'hover:bg-gray-100 hover:border-gray-400'
-                            }`}
-                          >
-                            {p}
-                          </Button>
-                        )
-                      )}
-                    </div>
-                    <Button
-                      variant="outline"
-                      disabled={page === pagination.pages}
-                      onClick={() => setPage(page + 1)}
-                      className="hover:bg-gray-100 active:scale-95 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
-                    >
-                      Próxima →
-                    </Button>
-                  </div>
-                )}
-              </>
+            {/* Pagination simplificada */}
+            {pagination && pagination.pages > 1 && (
+              <div className="flex justify-center gap-2 mt-8">
+                <Button variant="outline" size="sm" onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page === 1}>Anterior</Button>
+                <span className="py-1 px-3 text-sm font-medium">{page} de {pagination.pages}</span>
+                <Button variant="outline" size="sm" onClick={() => setPage(p => Math.min(pagination.pages, p + 1))} disabled={page === pagination.pages}>Próxima</Button>
+              </div>
             )}
           </div>
         </div>
@@ -375,4 +313,3 @@ export default function Catalog() {
     </div>
   );
 }
-

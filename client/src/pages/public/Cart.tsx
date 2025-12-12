@@ -3,7 +3,7 @@ import { Card } from '@/components/ui/card';
 import { useCart } from '@/contexts/CartContext';
 import { toast } from 'sonner';
 import { WHATSAPP_NUMBER } from '@/config/store';
-import { MessageCircle } from 'lucide-react';
+import { MessageCircle, Trash2, ArrowRight, ShoppingBag } from 'lucide-react';
 import { formatCurrencyDecimal } from '@/lib/utils';
 
 /**
@@ -48,12 +48,12 @@ export default function Cart() {
   if (items.length === 0) {
     return (
       <div className="min-h-screen bg-background">
-        <div className="container mx-auto px-4 py-16 text-center">
-          <div className="text-6xl mb-6">🛒</div>
-          <h1 className="text-4xl font-bold mb-4">Seu carrinho está vazio</h1>
-          <p className="text-muted-foreground mb-8 text-lg">Adicione produtos para começar suas compras</p>
+        <div className="container mx-auto px-4 py-12 sm:py-16 text-center">
+          <div className="text-5xl sm:text-6xl mb-4 sm:mb-6">🛒</div>
+          <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold mb-3 sm:mb-4">Seu carrinho está vazio</h1>
+          <p className="text-muted-foreground mb-6 sm:mb-8 text-base sm:text-lg">Adicione produtos para começar suas compras</p>
           <a href="/catalogo">
-            <Button className="bg-primary text-primary-foreground px-8 py-6 text-lg hover:shadow-lg">
+            <Button className="bg-primary text-primary-foreground px-6 sm:px-8 py-4 sm:py-6 text-base sm:text-lg hover:shadow-lg touch-target">
               Explorar Catálogo
             </Button>
           </a>
@@ -64,17 +64,17 @@ export default function Cart() {
 
   return (
     <div className="min-h-screen bg-background">
-      <div className="container mx-auto px-4 py-8">
-        <h1 className="text-4xl font-bold mb-8">Carrinho de Compras</h1>
+      <div className="container mx-auto px-4 py-6 sm:py-8">
+        <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold mb-4 sm:mb-6 md:mb-8">Carrinho de Compras</h1>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 sm:gap-8">
           {/* Cart Items */}
           <div className="lg:col-span-2">
-            <div className="space-y-4">
+            <div className="space-y-3 sm:space-y-4">
               {items.map(item => (
-                <Card key={item.id} className="p-6 hover:shadow-md transition-shadow">
-                  <div className="flex gap-6">
-                    <div className="w-28 h-28 bg-muted rounded-lg overflow-hidden flex-shrink-0 shadow-sm">
+                <Card key={item.id} className="p-4 sm:p-6 hover:shadow-md transition-shadow">
+                  <div className="flex flex-col sm:flex-row gap-4 sm:gap-6">
+                    <div className="w-20 h-20 sm:w-28 sm:h-28 bg-muted rounded-lg overflow-hidden flex-shrink-0 shadow-sm">
                       {item.image ? (
                         <img
                           src={item.image}
@@ -87,44 +87,45 @@ export default function Cart() {
                         </div>
                       )}
                     </div>
-                    <div className="flex-1">
-                      <h3 className="font-bold text-lg mb-2">{item.name}</h3>
+                    <div className="flex-1 min-w-0">
+                      <h3 className="font-bold text-base sm:text-lg mb-1 sm:mb-2 truncate">{item.name}</h3>
                       {(item.size || item.color) && (
                         <p className="text-sm text-muted-foreground mb-2">
                           {item.size} {item.color && `- ${item.color}`}
                         </p>
                       )}
-                      <p className="text-2xl font-bold text-primary">
+                      <p className="text-xl sm:text-2xl font-bold text-primary">
                         {formatCurrencyDecimal(item.price)}
                       </p>
                     </div>
-                    <div className="flex flex-col items-end justify-between">
-                      <div className="flex items-center gap-2 bg-secondary p-2 rounded-lg">
+                    <div className="flex flex-row sm:flex-col items-center sm:items-end justify-between sm:justify-between gap-2 sm:gap-0 w-full sm:w-auto">
+                      <div className="flex items-center gap-1 sm:gap-2 bg-secondary p-1.5 sm:p-2 rounded-lg">
                         <Button
                           variant="outline"
                           size="sm"
                           onClick={() => handleUpdateQuantity(item.id, item.quantity - 1)}
-                          className="w-8 h-8 p-0"
+                          className="w-7 h-7 sm:w-8 sm:h-8 p-0 touch-target"
                         >
                           −
                         </Button>
-                        <span className="w-8 text-center font-semibold">{item.quantity}</span>
+                        <span className="w-6 sm:w-8 text-center font-semibold text-sm sm:text-base">{item.quantity}</span>
                         <Button
                           variant="outline"
                           size="sm"
                           onClick={() => handleUpdateQuantity(item.id, item.quantity + 1)}
-                          className="w-8 h-8 p-0"
+                          className="w-7 h-7 sm:w-8 sm:h-8 p-0 touch-target"
                         >
                           +
                         </Button>
                       </div>
                       <Button
-                        variant="destructive"
-                        size="sm"
+                        variant="ghost"
+                        size="icon"
                         onClick={() => handleRemoveItem(item.id)}
-                        className="mt-4"
+                        className="mt-2 sm:mt-0 text-muted-foreground hover:text-destructive hover:bg-destructive/10 touch-target"
+                        aria-label="Remover item"
                       >
-                        🗑️ Remover
+                        <Trash2 className="h-5 w-5" />
                       </Button>
                     </div>
                   </div>
@@ -133,10 +134,10 @@ export default function Cart() {
             </div>
           </div>
 
-          {/* Cart Summary */}
+          {/* Cart Summary - Sticky on mobile */}
           <div className="lg:col-span-1">
-            <Card className="p-6 sticky top-24 shadow-lg">
-              <h2 className="font-bold text-2xl mb-6">Resumo do Pedido</h2>
+            <Card className="p-4 sm:p-6 lg:sticky lg:top-24 shadow-lg">
+              <h2 className="font-bold text-xl sm:text-2xl mb-4 sm:mb-6">Resumo do Pedido</h2>
 
               <div className="space-y-3 mb-6 pb-6 border-b border-border">
                 {items.map(item => (
@@ -169,20 +170,20 @@ export default function Cart() {
 
               <Button
                 onClick={handleWhatsAppCheckout}
-                className="w-full bg-green-600 hover:bg-green-700 text-white py-6 text-lg font-bold hover:shadow-lg transition-all mb-3"
+                className="w-full bg-green-600 hover:bg-green-700 text-white py-4 sm:py-6 text-base sm:text-lg font-bold hover:shadow-lg transition-all mb-3 touch-target"
               >
                 <MessageCircle className="mr-2 h-5 w-5" />
                 Finalizar pelo WhatsApp
               </Button>
 
-              <a href="/checkout" className="block mb-3">
-                <Button variant="outline" className="w-full py-6 text-lg">
+              {/*               <a href="/checkout" className="block mb-3">
+                <Button variant="outline" className="w-full py-4 sm:py-6 text-base sm:text-lg touch-target">
                   Checkout Web (Opcional)
                 </Button>
-              </a>
+              </a> */}
 
               <a href="/catalogo" className="block">
-                <Button variant="ghost" className="w-full py-6 text-lg hover:bg-secondary transition-all">
+                <Button variant="outline" className="w-full py-4 sm:py-6 text-base sm:text-lg hover:bg-secondary hover:text-foreground transition-all touch-target">
                   Continuar Comprando
                 </Button>
               </a>

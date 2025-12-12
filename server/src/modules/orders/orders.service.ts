@@ -50,16 +50,33 @@ export class OrdersService {
         }
 
         // Decrement variant stock
-        await tx.productVariant.update({
+        const updatedVariant = await tx.productVariant.update({
           where: { id: variant.id },
           data: { stock: { decrement: item.quantity } }
         });
 
+        // Garantir que o estoque não fique negativo
+        if (updatedVariant.stock < 0) {
+          await tx.productVariant.update({
+            where: { id: variant.id },
+            data: { stock: 0 }
+          });
+        }
+
         // Decrement product total stock
-        await tx.product.update({
+        const updatedProduct = await tx.product.update({
           where: { id: variant.productId },
-          data: { totalStock: { decrement: item.quantity } }
+          data: { totalStock: { decrement: item.quantity } },
+          select: { totalStock: true }
         });
+
+        // Garantir que o estoque total não fique negativo
+        if (updatedProduct.totalStock < 0) {
+          await tx.product.update({
+            where: { id: variant.productId },
+            data: { totalStock: 0 }
+          });
+        }
 
         orderItemsData.push({
           productId: item.productId,

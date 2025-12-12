@@ -220,6 +220,7 @@ export default function NewSale() {
                                     <TableHead className="w-[100px]">Produto</TableHead>
                                     <TableHead>Detalhes</TableHead>
                                     <TableHead>Preço</TableHead>
+                                    <TableHead>Estoque Total</TableHead>
                                     <TableHead>Tamanhos</TableHead>
                                 </TableRow>
                             </TableHeader>
@@ -243,6 +244,15 @@ export default function NewSale() {
                                             {formatCurrency(product.priceInCents)}
                                         </TableCell>
                                         <TableCell>
+                                            <div className="font-medium">
+                                                {product.totalStock > 0 ? (
+                                                    <span className="text-green-600">{product.totalStock} unidade{product.totalStock !== 1 ? 's' : ''}</span>
+                                                ) : (
+                                                    <span className="text-gray-500">SEM ESTOQUE</span>
+                                                )}
+                                            </div>
+                                        </TableCell>
+                                        <TableCell>
                                             <div className="flex flex-wrap gap-1">
                                                 {product.variants?.map(v => (
                                                     <Button
@@ -251,7 +261,11 @@ export default function NewSale() {
                                                         variant="outline"
                                                         disabled={v.stock <= 0}
                                                         onClick={() => addToCart(product, v.id, v.size)}
-                                                        className={`h-7 px-2 text-xs ${v.stock <= 0 ? 'opacity-50' : 'hover:border-primary hover:text-primary'}`}
+                                                        className={`h-7 px-2 text-xs font-semibold ${
+                                                            v.stock <= 0 
+                                                                ? 'opacity-50 cursor-not-allowed' 
+                                                                : 'hover:bg-primary hover:text-white hover:border-primary hover:scale-110 hover:shadow-md'
+                                                        }`}
                                                         title={`Estoque: ${v.stock}`}
                                                     >
                                                         {v.size}
@@ -398,7 +412,11 @@ export default function NewSale() {
                     <CardContent className="p-4 grid grid-cols-2 gap-3">
                         <Button
                             variant={paymentMethod === 'CASH' ? 'default' : 'outline'}
-                            className={`h-20 flex flex-col gap-2 ${paymentMethod === 'CASH' ? 'border-primary' : 'hover:border-primary/50'}`}
+                            className={`h-20 flex flex-col gap-2 font-semibold ${
+                                paymentMethod === 'CASH' 
+                                    ? 'border-primary shadow-lg shadow-primary/30' 
+                                    : 'hover:scale-105 hover:shadow-md'
+                            }`}
                             onClick={() => setPaymentMethod('CASH')}
                         >
                             <BanknoteIcon className="h-6 w-6" />
@@ -406,7 +424,11 @@ export default function NewSale() {
                         </Button>
                         <Button
                             variant={paymentMethod === 'PIX' ? 'default' : 'outline'}
-                            className={`h-20 flex flex-col gap-2 ${paymentMethod === 'PIX' ? 'border-primary ring-2 ring-primary/20' : 'hover:border-primary/50'}`}
+                            className={`h-20 flex flex-col gap-2 font-semibold ${
+                                paymentMethod === 'PIX' 
+                                    ? 'border-primary shadow-lg shadow-primary/30 ring-2 ring-primary/20' 
+                                    : 'hover:scale-105 hover:shadow-md'
+                            }`}
                             onClick={() => setPaymentMethod('PIX')}
                         >
                             <QrCode className="h-6 w-6" />
@@ -414,7 +436,11 @@ export default function NewSale() {
                         </Button>
                         <Button
                             variant={paymentMethod === 'POS_DEBIT' ? 'default' : 'outline'}
-                            className={`h-20 flex flex-col gap-2 ${paymentMethod === 'POS_DEBIT' ? 'border-primary' : 'hover:border-primary/50'}`}
+                            className={`h-20 flex flex-col gap-2 font-semibold ${
+                                paymentMethod === 'POS_DEBIT' 
+                                    ? 'border-primary shadow-lg shadow-primary/30' 
+                                    : 'hover:scale-105 hover:shadow-md'
+                            }`}
                             onClick={() => setPaymentMethod('POS_DEBIT')}
                         >
                             <Smartphone className="h-6 w-6" />
@@ -422,7 +448,11 @@ export default function NewSale() {
                         </Button>
                         <Button
                             variant={paymentMethod === 'POS_CREDIT' ? 'default' : 'outline'}
-                            className={`h-20 flex flex-col gap-2 ${paymentMethod === 'POS_CREDIT' ? 'border-primary' : 'hover:border-primary/50'}`}
+                            className={`h-20 flex flex-col gap-2 font-semibold ${
+                                paymentMethod === 'POS_CREDIT' 
+                                    ? 'border-primary shadow-lg shadow-primary/30' 
+                                    : 'hover:scale-105 hover:shadow-md'
+                            }`}
                             onClick={() => setPaymentMethod('POS_CREDIT')}
                         >
                             <CreditCard className="h-6 w-6" />
@@ -431,7 +461,7 @@ export default function NewSale() {
                     </CardContent>
                     <CardFooter className="px-4 pb-4">
                         <Button
-                            className="w-full h-12 text-lg font-bold shadow-lg shadow-primary/20"
+                            className="w-full h-14 text-lg font-bold bg-black text-white hover:bg-gray-800 shadow-lg shadow-black/30 hover:shadow-xl hover:shadow-black/40 transition-all duration-300"
                             size="lg"
                             disabled={cart.length === 0 || isSubmitting}
                             onClick={handleFinishSale}
