@@ -20,7 +20,12 @@ async function bootstrap() {
                 ...helmet.contentSecurityPolicy.getDefaultDirectives(),
 
                 // scripts do próprio site + Cloudflare Insights (se usar)
-                "script-src": ["'self'", "https://static.cloudflareinsights.com"],
+                "script-src": [
+  "'self'",
+  "https://static.cloudflareinsights.com",
+  "'sha256-6Z59t59rp52o8zfsvvsotNda8VkKS1YOhoOYeTzwods='",
+],
+
 
                 // se você carregar CSS externo (Google Fonts etc), libera aqui
                 // "style-src": ["'self'", "https://fonts.googleapis.com"],
