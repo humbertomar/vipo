@@ -1,56 +1,37 @@
-# ============================
-# STAGE 1 - BUILD (front + back)
-# ============================
-FROM node:22-alpine AS builder
+# Imagem única (build + runtime) pra não ter mais dor de cabeça com COPY entre estágios
+FROM node:22-alpine
 
+# Diretório de trabalho
 WORKDIR /app
 
-# 1) Copia arquivos de dependência
-COPY package.json pnpm-lock.yaml* pnpm-workspace.yaml* ./
+# Dependências básicas
+RUN apk add --no-cache dumb-init openssl
+
+# Copia arquivos de dependências
+COPY package.json pnpm-lock.yaml* ./
 COPY prisma ./prisma
 COPY patches ./patches
 
-# 2) Instala pnpm + TODAS as dependências (dev + prod)
+# Instala pnpm e TODAS as dependências (dev + prod) para conseguir buildar
 RUN npm install -g pnpm \
   && pnpm install --no-frozen-lockfile
 
-# 3) Gera Prisma Client (v6.19.1 que já está no projeto)
+# Gera Prisma Client
 RUN npx prisma generate
 
-# 4) Copia o restante do código
+# Copia o restante do código (client, server, shared, configs, etc.)
 COPY . .
 
-# 5) Build do front (Vite) -> dist/public
-RUN pnpm run build:client
+# Builda front + back exatamente como você faz local
+# (build:client -> vite build, build:server -> cd server && tsc)
+RUN pnpm run build
 
-# 6) Build do backend (Nest) -> server/dist/main.js
-RUN pnpm run build:server
-
-
-# ============================
-# STAGE 2 - RUNTIME
-# ============================
-FROM node:22-alpine AS runner
-
-WORKDIR /app
+# Variáveis padrão
 ENV NODE_ENV=production
+ENV PORT=3001
 
-# 1) dumb-init pra gerenciar sinais
-RUN apk add --no-cache dumb-init
-
-# 2) Copia somente o que precisa pra rodar
-COPY package.json pnpm-lock.yaml* pnpm-workspace.yaml* ./
-COPY prisma ./prisma
-
-# Copia node_modules pronto do builder (já com Prisma Client gerado)
-COPY --from=builder /app/node_modules ./node_modules
-
-# Copia front buildado e backend buildado
-COPY --from=builder /app/dist ./dist
-COPY --from=builder /app/server/dist ./server/dist
-
-# Porta do backend
-EXPOSE 3000
+# Expõe a porta do backend
+EXPOSE 3001
 
 # Sobe o Nest compilado
 CMD ["dumb-init", "node", "server/dist/main.js"]
