@@ -3,29 +3,29 @@
 # ============================
 FROM node:22-alpine AS builder
 
+# Diretório de trabalho
 WORKDIR /app
 
-# Algumas libs (Prisma, etc.) precisam de OpenSSL
-RUN apk add --no-cache openssl
-
-# Copia arquivos principais de dependências
+# Copia apenas arquivos de dependência primeiro (cache)
 COPY package.json pnpm-lock.yaml* pnpm-workspace.yaml* ./
-COPY patches ./patches
 COPY prisma ./prisma
+COPY patches ./patches 2>/dev/null || true
 
-# Instala TODAS as dependências (dev + prod) para build
-RUN npm install -g pnpm && pnpm install --no-frozen-lockfile
+# pnpm global e deps completas (dev + prod, pra buildar tudo)
+RUN npm install -g pnpm \
+  && pnpm install --no-frozen-lockfile
 
-# Gera Prisma Client no ambiente de build
+# Gera Prisma Client (usa prisma@6.19.1 do projeto)
 RUN npx prisma generate
 
-# Copia o restante do código
+# Agora copia o resto do código
 COPY . .
 
-# Aqui usamos o MESMO build que você já usava localmente:
-#  - build:client (Vite) → gera dist/public
-#  - build:server       → compila o backend (Nest)
-RUN pnpm run build
+# Build do front
+RUN pnpm run build:client
+
+# Build do backend (Nest), que deve gerar server/dist/main.js
+RUN pnpm run build:server
 
 # ============================
 # STAGE 2 - RUNTIME
@@ -33,35 +33,27 @@ RUN pnpm run build
 FROM node:22-alpine AS runner
 
 WORKDIR /app
+ENV NODE_ENV=production
 
-# dumb-init pra lidar bem com sinais no container
-# openssl pra Prisma/DB
-RUN apk add --no-cache dumb-init openssl
+# dumb-init pra não zoar signal/kill
+RUN apk add --no-cache dumb-init
 
-# Copia package/lock pra instalar apenas deps de runtime
+# Copia apenas o necessário de runtime
 COPY package.json pnpm-lock.yaml* pnpm-workspace.yaml* ./
-
-# Instala SOMENTE dependências de produção
-RUN npm install -g pnpm && pnpm install --prod --no-frozen-lockfile
-
-# Copia pasta prisma (schema etc)
 COPY prisma ./prisma
 
-# Copia TUDO que foi buildado no estágio anterior:
-#  - dist/public  -> front (Vite)
-#  - dist/server  -> back (Nest compilado)
+# Instala SÓ deps de produção
+RUN npm install -g pnpm \
+  && pnpm install --prod --no-frozen-lockfile
+
+# Copia artefatos buildados do builder:
+# - frontend Vite em /dist/public
+# - backend Nest em /server/dist
 COPY --from=builder /app/dist ./dist
+COPY --from=builder /app/server/dist ./server/dist
 
-# Gera Prisma Client DENTRO da imagem final usando a mesma versão 6.x
-RUN npx prisma@6.19.1 generate
-
-ENV NODE_ENV=production
-ENV PORT=3000
-
+# Porta do backend
 EXPOSE 3000
 
-# IMPORTANTE:
-#  - "--experimental-default-type=commonjs" faz Node tratar .js como CommonJS
-#    mesmo com "type": "module" no package.json da raiz.
-#  - O Nest compilado, pelo padrão, costuma ficar em dist/server/main.js
-CMD ["dumb-init", "node", "--experimental-default-type=commonjs", "dist/server/main.js"]
+# Sobe o Nest compilado
+CMD ["dumb-init", "node", "server/dist/main.js"]
