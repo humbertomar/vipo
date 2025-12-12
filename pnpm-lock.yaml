@@ -224,6 +224,9 @@ importers:
       recharts:
         specifier: ^2.15.2
         version: 2.15.4(react-dom@19.2.2(react@19.2.2))(react@19.2.2)
+      reflect-metadata:
+        specifier: ^0.2.2
+        version: 0.2.2
       sonner:
         specifier: ^2.0.7
         version: 2.0.7(react-dom@19.2.2(react@19.2.2))(react@19.2.2)
