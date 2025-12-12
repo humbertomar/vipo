@@ -251,14 +251,58 @@ export class ProductsService {
   async remove(id: string) {
     const product = await this.prisma.product.findUnique({
       where: { id },
+      include: {
+        orderItems: true,
+        variants: {
+          include: {
+            cartItems: true,
+          },
+        },
+      },
     });
 
     if (!product) {
       throw new NotFoundException('Product não encontrado');
     }
 
-    await this.prisma.product.delete({
-      where: { id },
+    // Verifica se o produto está em pedidos
+    if (product.orderItems && product.orderItems.length > 0) {
+      throw new BadRequestException(
+        'Não é possível deletar um produto que está associado a pedidos. Considere desativar o produto em vez de deletá-lo.'
+      );
+    }
+
+    // Verifica se há variantes no carrinho
+    const hasCartItems = product.variants?.some(
+      (variant) => variant.cartItems && variant.cartItems.length > 0
+    );
+    if (hasCartItems) {
+      throw new BadRequestException(
+        'Não é possível deletar um produto que está no carrinho de algum cliente. Considere desativar o produto em vez de deletá-lo.'
+      );
+    }
+
+    // Deleta relacionamentos que não têm onDelete: Cascade
+    await this.prisma.$transaction(async (tx) => {
+      // Deleta variants (CartItems serão removidos automaticamente se houver onDelete: Cascade)
+      await tx.productVariant.deleteMany({
+        where: { productId: id },
+      });
+
+      // Deleta attributes
+      await tx.productAttribute.deleteMany({
+        where: { productId: id },
+      });
+
+      // Deleta inventory movements
+      await tx.inventoryMovement.deleteMany({
+        where: { productId: id },
+      });
+
+      // Deleta o produto (images serão deletadas automaticamente por onDelete: Cascade)
+      await tx.product.delete({
+        where: { id },
+      });
     });
 
     return { message: 'Product deletado com sucesso' };
