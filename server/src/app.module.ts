@@ -55,7 +55,10 @@ import { join } from 'path';
       ? [
           ServeStaticModule.forRoot({
             rootPath: join(process.cwd(), 'dist', 'public'),
-            exclude: ['/api*', '/uploads*'],
+            exclude: (path) => {
+              // Exclui rotas da API e uploads
+              return path.startsWith('/api') || path.startsWith('/uploads');
+            },
             serveStaticOptions: {
               index: false,
             },
