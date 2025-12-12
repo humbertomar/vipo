@@ -51,16 +51,14 @@ import { join } from 'path';
       serveRoot: '/uploads',
     }),
     // Servir frontend buildado (apenas em produção)
+    // As rotas da API são registradas antes, então não precisam ser excluídas explicitamente
     ...(process.env.NODE_ENV === 'production' 
       ? [
           ServeStaticModule.forRoot({
             rootPath: join(process.cwd(), 'dist', 'public'),
-            exclude: (path) => {
-              // Exclui rotas da API e uploads
-              return path.startsWith('/api') || path.startsWith('/uploads');
-            },
             serveStaticOptions: {
-              index: false,
+              index: 'index.html',
+              fallthrough: false, // Serve index.html para rotas não encontradas (SPA)
             },
           }),
         ]
